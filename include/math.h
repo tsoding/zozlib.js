@@ -1,4 +1,4 @@
-// Phony math.h. Since we are compiling with --no-standard-libraries we raymath.h can't find math.h.
+// Phony math.h. Since we are compiling with --no-standard-libraries raymath.h can't find math.h.
 // But it only needs it for few function definitions. So we've put those definitions here.
 #ifndef MATH_H_
 #define MATH_H_
