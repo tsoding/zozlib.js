@@ -13,13 +13,16 @@
 
         .not-hosted-msg {
             text-align: center;
-            font-weight: bold;
             position: absolute;
 
             top: 50%;
             left: 50%;
 
             transform: translate(-50%, -50%);
+        }
+
+        .not-hosted-msg .important {
+            font-weight: bold;
         }
     </style>
     <script>
@@ -38,8 +41,12 @@
             window.addEventListener("load", () => {
                 document.body.innerHTML = `
                     <div class="not-hosted-msg">
-                        <p>Unfortunately, due to CORs restrictions, the wasm assembly cannot be fetched.</p>
-                        <p>Please navigate to this location using a web server.</p>
+                        <div class="important">
+                          <p>Unfortunately, due to CORs restrictions, the wasm assembly cannot be fetched.</p>
+                          <p>Please navigate to this location using a web server.</p>
+                          <p>If you have Python 3 on your system you can just do:</p>
+                        </div>
+                        <code>$ python3 -m http.server 6969</code>
                     </div>
                 `;
             });
