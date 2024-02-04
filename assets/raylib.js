@@ -11,9 +11,10 @@ function make_environment(...envs) {
     });
 }
 
-let previous = undefined;
 let wasm = undefined;
 let ctx = undefined;
+let targetFPS = 60;
+let calculatedFPS = targetFPS;
 let dt = undefined;
 
 function cstrlen(mem, ptr) {
@@ -32,44 +33,45 @@ function cstr_by_ptr(mem_buffer, ptr) {
     return new TextDecoder().decode(bytes);
 }
 
+/**
+ * @param {number} num
+ */
+const toHex = (num) => num.toString(16).padStart(2, '0');
+
 function color_hex_unpacked(r, g, b, a) {
-    r = r.toString(16).padStart(2, '0');
-    g = g.toString(16).padStart(2, '0');
-    b = b.toString(16).padStart(2, '0');
-    a = a.toString(16).padStart(2, '0');
-    return "#"+r+g+b+a;
+    return "#"+toHex(r)+toHex(g)+toHex(b)+toHex(a);
 }
 
-function color_hex(color) {
-    const r = ((color>>(0*8))&0xFF).toString(16).padStart(2, '0');
-    const g = ((color>>(1*8))&0xFF).toString(16).padStart(2, '0');
-    const b = ((color>>(2*8))&0xFF).toString(16).padStart(2, '0');
-    const a = ((color>>(3*8))&0xFF).toString(16).padStart(2, '0');
-    return "#"+r+g+b+a;
-}
+const NO_OP = () => {};
 
 WebAssembly.instantiateStreaming(fetch('wasm/game.wasm'), {
     env: make_environment({
+        /**
+         * @param {number} width
+         * @param {number} height
+         * @param {IntPtr} title_ptr
+         */
         InitWindow: (width, height, title_ptr) => {
-            ctx.canvas.width = width;
-            ctx.canvas.height = height;
+            Object.assign(ctx.canvas, { width, height });
+
             const buffer = wasm.instance.exports.memory.buffer;
             document.title = cstr_by_ptr(buffer, title_ptr);
         },
+        /**
+         * @param {number} fps
+         */
         SetTargetFPS: (fps) => {
-            console.log(`The game wants to run at ${fps} FPS, but in Web we gonna just ignore it.`);
+            targetFPS = fps;
+            if (targetFPS < 1 || targetFPS > 120) targetFPS = 60;
+
+            console.log(`The game requested for ${fps}fps, setting it to ${targetFPS}fps`);
         },
-        GetScreenWidth: () => {
-            return ctx.canvas.width;
-        },
-        GetScreenHeight: () => {
-            return ctx.canvas.height;
-        },
-        GetFrameTime: () => {
-            return dt;
-        },
-        BeginDrawing: () => {},
-        EndDrawing: () => {},
+        GetScreenWidth: () => ctx.canvas.width,
+        GetScreenHeight: () => ctx.canvas.height,
+        GetFrameTime: () => dt/1000,
+        GetFPS: () => calculatedFPS,
+        BeginDrawing: NO_OP,
+        EndDrawing: NO_OP,
         DrawCircleV: (center_ptr, radius, color_ptr) => {
             const buffer = wasm.instance.exports.memory.buffer;
             const [x, y] = new Float32Array(buffer, center_ptr, 2);
@@ -94,17 +96,44 @@ WebAssembly.instantiateStreaming(fetch('wasm/game.wasm'), {
     const canvas = document.getElementById("game");
     ctx = canvas.getContext("2d");
 
+    let start = performance.now();
     w.instance.exports.game_init();
-    function first(timestamp) {
-        previous = timestamp;
-        window.requestAnimationFrame(next)
-    }
-    function next(timestamp) {
-        dt = (timestamp - previous)/1000.0;
-        previous = timestamp;
+    dt = (performance.now() - start);
+
+    let startTime = performance.now();
+    let lastFrameTime = startTime;
+    let frameCount = 0;
+
+    const frame = () => {
+        frameCount++;
+
+        const currentTime = performance.now();
+        dt = currentTime - lastFrameTime;
+        const elapsedTime = currentTime - startTime;
+
+        if (elapsedTime >= 1000) {
+            calculatedFPS = Math.floor((frameCount / elapsedTime) * 500);
+
+            // Reset for the next second
+            startTime = currentTime;
+            frameCount = 0;
+        }
+
         w.instance.exports.game_frame();
-        window.requestAnimationFrame(next);
-    }
-    window.requestAnimationFrame(first);
+
+        ctx.font = "24px JetBrainsMono";
+        ctx.textBaseline = "hanging";
+        ctx.fillText(`${calculatedFPS} fps`, 50, 50);
+
+        lastFrameTime = currentTime;
+        setTimeout(frame, Math.max(0, (1000 / targetFPS) - dt));
+    };
+
+    frame();
 })
 .catch((err) => console.log(err));
+
+
+// == TypeDefs ==
+
+/** @typedef {number} IntPtr */

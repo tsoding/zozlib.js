@@ -3,8 +3,10 @@
 
 #define BALL_RADIUS 100.0
 #define GRAVITY 1000.0
+#define DAMPING 0.99 // New damping factor
 
 static Vector2 ball_position = {0};
+static Vector2 initial_velocity = {200, 200};
 static Vector2 ball_velocity = {200, 200};
 
 void game_frame()
@@ -12,6 +14,7 @@ void game_frame()
     BeginDrawing();
         ClearBackground((Color){20, 20, 20, 255});
         float dt = GetFrameTime();
+
         ball_velocity.y += GRAVITY*dt;
         float x = ball_position.x + ball_velocity.x*dt;
         if (x - BALL_RADIUS < 0.0 || x + BALL_RADIUS >= GetScreenWidth()) {
@@ -25,6 +28,7 @@ void game_frame()
         } else {
             ball_position.y = y;
         }
+
         DrawCircleV(ball_position, BALL_RADIUS, RED);
     EndDrawing();
 }
