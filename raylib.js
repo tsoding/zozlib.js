@@ -16,6 +16,7 @@ let wasm = undefined;
 let ctx = undefined;
 let dt = undefined;
 let targetFPS = 60;
+let calculatedFPS = targetFPS;
 
 function cstrlen(mem, ptr) {
     let len = 0;
@@ -58,8 +59,13 @@ WebAssembly.instantiateStreaming(fetch('wasm/game.wasm'), {
             document.title = cstr_by_ptr(buffer, title_ptr);
         },
         SetTargetFPS: (fps) => {
-            console.log(`The game wants to run at ${fps} FPS, but in Web we gonna just ignore it.`);
             targetFPS = fps;
+            if (targetFPS < 1) {
+                targetFPS = 60;
+                console.log("The requested fps is less than 1, setting it to 60");
+            } else {
+                console.log(`Updated the target fps to be ${targetFPS}`)
+            }
         },
         GetScreenWidth: () => {
             return ctx.canvas.width;
@@ -68,7 +74,7 @@ WebAssembly.instantiateStreaming(fetch('wasm/game.wasm'), {
             return ctx.canvas.height;
         },
         GetFrameTime: () => {
-            return Math.min(dt, 1.0/targetFPS);
+            return Math.min(dt/1000, 1.0/targetFPS);
         },
         BeginDrawing: () => {},
         EndDrawing: () => {},
@@ -96,17 +102,35 @@ WebAssembly.instantiateStreaming(fetch('wasm/game.wasm'), {
     const canvas = document.getElementById("game");
     ctx = canvas.getContext("2d");
 
+    let start = performance.now();
     w.instance.exports.game_init();
-    function first(timestamp) {
-        previous = timestamp;
-        window.requestAnimationFrame(next)
-    }
-    function next(timestamp) {
-        dt = (timestamp - previous)/1000.0;
-        previous = timestamp;
+    dt = (performance.now() - start);
+
+    let startTime = performance.now();
+    let lastFrameTime = startTime;
+    let frameCount = 0;
+
+    const frame = () => {
+        frameCount++;
+
+        const currentTime = performance.now();
+        dt = currentTime - lastFrameTime;
+        const elapsedTime = currentTime - startTime;
+
+        if (elapsedTime >= 1000) {
+            calculatedFPS = Math.floor((frameCount / elapsedTime) * 500);
+
+            // Reset for the next second
+            startTime = currentTime;
+            frameCount = 0;
+        }
+
         w.instance.exports.game_frame();
-        window.requestAnimationFrame(next);
-    }
-    window.requestAnimationFrame(first);
+
+        lastFrameTime = currentTime;
+        setTimeout(frame, Math.max(0, (1000 / targetFPS) - dt));
+    };
+
+    frame();
 })
 .catch((err) => console.log(err));
