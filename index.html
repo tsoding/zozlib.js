@@ -1,19 +1,52 @@
 <!DOCTYPE html>
 <html>
-  <head>
+<head>
     <title>Hello, Raylib!</title>
     <style>
-      #game {
-          position: absolute;
-          top: 50%;
-          left: 50%;
-          height: 100%;
-          transform: translate(-50%, -50%);
-      }
+        #game {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            height: 100%;
+            transform: translate(-50%, -50%);
+        }
+
+        .not-hosted-msg {
+            text-align: center;
+            font-weight: bold;
+            position: absolute;
+
+            top: 50%;
+            left: 50%;
+
+            transform: translate(-50%, -50%);
+        }
     </style>
-  </head>
-  <body>
+    <script>
+        const { protocol } = window.location;
+        const isHosted = protocol !== "file:";
+
+        if (isHosted) {
+            const script = Object.assign(document.createElement("script"), {
+                type: "text/javascript",
+                src: "/assets/raylib.js",
+                defer: true
+            });
+
+            document.head.appendChild(script);
+        } else {
+            window.addEventListener("load", () => {
+                document.body.innerHTML = `
+                    <div class="not-hosted-msg">
+                        <p>Unfortunately, due to CORs restrictions, the wasm assembly cannot be fetched.</p>
+                        <p>Please navigate to this location using a web server.</p>
+                    </div>
+                `;
+            });
+        }
+    </script>
+</head>
+<body>
     <canvas id="game"></canvas>
-    <script src="raylib.js"></script>
-  </body>
+</body>
 </html>
