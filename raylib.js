@@ -15,6 +15,7 @@ let previous = undefined;
 let wasm = undefined;
 let ctx = undefined;
 let dt = undefined;
+let targetFPS = 60;
 
 function cstrlen(mem, ptr) {
     let len = 0;
@@ -58,6 +59,7 @@ WebAssembly.instantiateStreaming(fetch('wasm/game.wasm'), {
         },
         SetTargetFPS: (fps) => {
             console.log(`The game wants to run at ${fps} FPS, but in Web we gonna just ignore it.`);
+            targetFPS = fps;
         },
         GetScreenWidth: () => {
             return ctx.canvas.width;
@@ -66,7 +68,7 @@ WebAssembly.instantiateStreaming(fetch('wasm/game.wasm'), {
             return ctx.canvas.height;
         },
         GetFrameTime: () => {
-            return dt;
+            return Math.min(dt, 1.0/targetFPS);
         },
         BeginDrawing: () => {},
         EndDrawing: () => {},
