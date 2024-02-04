@@ -48,7 +48,7 @@ function color_hex(color) {
     return "#"+r+g+b+a;
 }
 
-WebAssembly.instantiateStreaming(fetch('assets/game.wasm'), {
+WebAssembly.instantiateStreaming(fetch('wasm/game.wasm'), {
     env: make_environment({
         InitWindow: (width, height, title_ptr) => {
             ctx.canvas.width = width;
