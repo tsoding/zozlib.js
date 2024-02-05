@@ -7,7 +7,7 @@ Unofficial Implementation of Subset of [Raylib](https://github.com/raysan5/rayli
 ## Quick Start
 
 ```console
-$ make
+$ ./build.sh
 $ python3 -m http.server 6969
 $ <browser> http://localhost:6969/
 ```

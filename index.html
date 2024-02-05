@@ -24,6 +24,10 @@
         .not-hosted-msg .important {
             font-weight: bold;
         }
+        @font-face {
+            font-family: grixel;
+            src: url(fonts/acme_7_wide_xtnd.woff);
+        }
     </style>
     <script>
         const { protocol } = window.location;
@@ -32,7 +36,7 @@
         if (isHosted) {
             const script = Object.assign(document.createElement("script"), {
                 type: "text/javascript",
-                src: "/raylib.js",
+                src: "./raylib.js",
                 defer: true
             });
 

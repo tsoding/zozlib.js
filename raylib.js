@@ -6,7 +6,9 @@ function make_environment(...envs) {
                     return env[prop];
                 }
             }
-            return (...args) => {console.error("NOT IMPLEMENTED: "+prop, args)}
+            return (...args) => {
+                throw new Error(`NOT IMPLEMENTED: ${prop} ${args}`);
+            }
         }
     });
 }
@@ -16,6 +18,7 @@ let wasm = undefined;
 let ctx = undefined;
 let dt = undefined;
 let targetFPS = 60;
+let entryFunction = undefined;
 
 function cstrlen(mem, ptr) {
     let len = 0;
@@ -49,7 +52,12 @@ function color_hex(color) {
     return "#"+r+g+b+a;
 }
 
-WebAssembly.instantiateStreaming(fetch('wasm/game.wasm'), {
+function getColorFromMemory(buffer, color_ptr) {
+    const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
+    return color_hex_unpacked(r, g, b, a);
+}
+
+WebAssembly.instantiateStreaming(fetch('wasm/core_basic_window.wasm'), {
     env: make_environment({
         InitWindow: (width, height, title_ptr) => {
             ctx.canvas.width = width;
@@ -83,11 +91,30 @@ WebAssembly.instantiateStreaming(fetch('wasm/game.wasm'), {
             ctx.fill();
         },
         ClearBackground: (color_ptr) => {
-            const buffer = wasm.instance.exports.memory.buffer;
-            const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
-            ctx.fillStyle = color_hex_unpacked(r, g, b, a);
+            ctx.fillStyle = getColorFromMemory(wasm.instance.exports.memory.buffer, color_ptr);
             ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         },
+        // RLAPI void DrawText(const char *text, int posX, int posY, int fontSize, Color color);       // Draw text (using default font)
+        DrawText: (text_ptr, posX, posY, fontSize, color_ptr) => {
+            const buffer = wasm.instance.exports.memory.buffer;
+            const text = cstr_by_ptr(buffer, text_ptr);
+            const color = getColorFromMemory(buffer, color_ptr);
+            // TODO: We stole the font from the website
+            // (https://raylib.com/) and it's slightly different than
+            // the one that is "baked" into Raylib library itself. To
+            // account for the differences we scale the size with a
+            // magical factor.
+            //
+            // It would be nice to have a better approach...
+            const fontSizeFactor = 0.6;
+            ctx.fillStyle = color;
+            ctx.font = `${fontSize*fontSizeFactor}px grixel`;
+            ctx.fillText(text, posX, posY);
+        },
+        raylib_js_set_entry: (entry) => {
+            entryFunction = entry;
+            console.log(`Entry function was set to ${entryFunction}`);
+        }
     })
 })
 .then((w) => {
@@ -96,7 +123,9 @@ WebAssembly.instantiateStreaming(fetch('wasm/game.wasm'), {
     const canvas = document.getElementById("game");
     ctx = canvas.getContext("2d");
 
-    w.instance.exports.game_init();
+    w.instance.exports.main();
+    let entry = w.instance.exports.__indirect_function_table.get(entryFunction);
+
     function first(timestamp) {
         previous = timestamp;
         window.requestAnimationFrame(next)
@@ -104,7 +133,7 @@ WebAssembly.instantiateStreaming(fetch('wasm/game.wasm'), {
     function next(timestamp) {
         dt = (timestamp - previous)/1000.0;
         previous = timestamp;
-        w.instance.exports.game_frame();
+        entry();
         window.requestAnimationFrame(next);
     }
     window.requestAnimationFrame(first);

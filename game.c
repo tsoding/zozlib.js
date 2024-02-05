@@ -7,7 +7,9 @@
 static Vector2 ball_position = {0};
 static Vector2 ball_velocity = {200, 200};
 
-void game_frame()
+void raylib_js_set_entry(void (*entry)(void));
+
+void GameFrame()
 {
     BeginDrawing();
         ClearBackground((Color){20, 20, 20, 255});
@@ -29,7 +31,7 @@ void game_frame()
     EndDrawing();
 }
 
-void game_init()
+int main()
 {
     InitWindow(800, 600, "Hello, from WebAssembly");
     SetTargetFPS(60);
@@ -38,21 +40,14 @@ void game_init()
     int h = GetScreenHeight();
     ball_position.x = w/2;
     ball_position.y = h/2;
-}
 
-void game_over()
-{
-    CloseWindow();
-}
-
-#ifndef PLATFORM_WEB
-int main()
-{
-    game_init();
+#ifdef PLATFORM_WEB
+    raylib_js_set_entry(GameFrame);
+#else
     while (!WindowShouldClose()) {
-        game_frame();
+        GameFrame();
     }
-    game_over();
+    CloseWindow();
+#endif
     return 0;
 }
-#endif
