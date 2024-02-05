@@ -19,6 +19,10 @@ let ctx = undefined;
 let dt = undefined;
 let targetFPS = 60;
 let entryFunction = undefined;
+let pressedKeys = new Set();
+const glfwKeyMapping = {
+    "Enter": 257,
+}
 
 function cstrlen(mem, ptr) {
     let len = 0;
@@ -57,7 +61,7 @@ function getColorFromMemory(buffer, color_ptr) {
     return color_hex_unpacked(r, g, b, a);
 }
 
-WebAssembly.instantiateStreaming(fetch('wasm/core_basic_window.wasm'), {
+WebAssembly.instantiateStreaming(fetch('wasm/core_basic_screen_manager.wasm'), {
     env: make_environment({
         InitWindow: (width, height, title_ptr) => {
             ctx.canvas.width = width;
@@ -79,7 +83,9 @@ WebAssembly.instantiateStreaming(fetch('wasm/core_basic_window.wasm'), {
             return Math.min(dt, 1.0/targetFPS);
         },
         BeginDrawing: () => {},
-        EndDrawing: () => {},
+        EndDrawing: () => {
+            pressedKeys.clear();
+        },
         DrawCircleV: (center_ptr, radius, color_ptr) => {
             const buffer = wasm.instance.exports.memory.buffer;
             const [x, y] = new Float32Array(buffer, center_ptr, 2);
@@ -106,15 +112,28 @@ WebAssembly.instantiateStreaming(fetch('wasm/core_basic_window.wasm'), {
             // magical factor.
             //
             // It would be nice to have a better approach...
-            const fontSizeFactor = 0.6;
+            fontSize *= 0.65;
             ctx.fillStyle = color;
-            ctx.font = `${fontSize*fontSizeFactor}px grixel`;
-            ctx.fillText(text, posX, posY);
+            ctx.font = `${fontSize}px grixel`;
+            ctx.fillText(text, posX, posY + fontSize);
+        },
+        // RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
+        DrawRectangle: (posX, posY, width, height, color_ptr) => {
+            const buffer = wasm.instance.exports.memory.buffer;
+            const color = getColorFromMemory(buffer, color_ptr);
+            ctx.fillStyle = color;
+            ctx.fillRect(posX, posY, width, height);
+        },
+        IsKeyPressed: (key) => {
+            return pressedKeys.has(key);
+        },
+        IsGestureDetected: () => {
+            return false;
         },
         raylib_js_set_entry: (entry) => {
             entryFunction = entry;
             console.log(`Entry function was set to ${entryFunction}`);
-        }
+        },
     })
 })
 .then((w) => {
@@ -122,6 +141,10 @@ WebAssembly.instantiateStreaming(fetch('wasm/core_basic_window.wasm'), {
 
     const canvas = document.getElementById("game");
     ctx = canvas.getContext("2d");
+
+    window.addEventListener("keydown", (e) => {
+        pressedKeys.add(glfwKeyMapping[e.code]);
+    });
 
     w.instance.exports.main();
     let entry = w.instance.exports.__indirect_function_table.get(entryFunction);
