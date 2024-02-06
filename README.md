@@ -6,6 +6,8 @@ Unofficial Implementation of Subset of [Raylib](https://github.com/raysan5/rayli
 
 ## Start Demo Locally
 
+The demo is deployed to GitHub pages: https://tsoding.github.io/raylib.js/ But you can run it locally.
+
 ```console
 $ ./build.sh
 $ python3 -m http.server 6969
