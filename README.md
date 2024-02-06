@@ -4,7 +4,7 @@ Unofficial Implementation of Subset of [Raylib](https://github.com/raysan5/rayli
 
 **WARNING! This is a Research Project and not guaranteed to be useful in present or/and future! If you quickly need to port your Raylib game to Web just follow these instructions: https://github.com/raysan5/raylib/wiki/Working-for-Web-(HTML5)**
 
-## Quick Start
+## Start Demo Locally
 
 ```console
 $ ./build.sh
