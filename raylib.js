@@ -131,6 +131,7 @@ class RaylibJs {
         // It would be nice to have a better approach...
         fontSize *= 0.65;
         this.ctx.fillStyle = color;
+        // TODO: since the default font is part of Raylib the css that defines it should be located in raylib.js and not in index.html
         this.ctx.font = `${fontSize}px grixel`;
         this.ctx.fillText(text, posX, posY + fontSize);
     }
