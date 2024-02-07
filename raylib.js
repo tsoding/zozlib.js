@@ -43,9 +43,13 @@ class RaylibJs {
             throw new Error("Could not create 2d canvas context");
         }
 
-        this.wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
-            env: make_environment(this)
-        });
+        try {
+          this.wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
+            env: make_environment(this),
+          });
+        } catch (error) {
+            alert(`Failed to load the file ${wasmPath}. File doesn't exist or is not a valid wasm file.`);
+        }
 
         const keyDown = (e) => {
             this.pressedKeys.add(glfwKeyMapping[e.code]);
