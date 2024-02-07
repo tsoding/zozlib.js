@@ -48,7 +48,8 @@ class RaylibJs {
             env: make_environment(this),
           });
         } catch (error) {
-            alert(`Failed to load the file ${wasmPath}. File doesn't exist or is not a valid wasm file.`);
+            alert(`Failed to load the file ${wasmPath}.`);
+            throw new Error("File doesn't exist or is not a valid wasm file.");
         }
 
         const keyDown = (e) => {
