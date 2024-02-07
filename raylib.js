@@ -87,11 +87,6 @@ class RaylibJs {
         return false;
     }
 
-    SetWindowSize(width, height) {
-        this.ctx.canvas.width = width;
-        this.ctx.canvas.height = height;
-    }
-
     SetTargetFPS(fps) {
         console.log(`The game wants to run at ${fps} FPS, but in Web we gonna just ignore it.`);
         this.targetFPS = fps;
@@ -280,7 +275,7 @@ const glfwKeyMapping = {
     "NumPad7":        327,
     "NumPad8":        328,
     "NumPad9":        329,
-    "NumpadDecima":   330,
+    "NumpadDecimal":  330,
     "NumpadDivide":   331,
     "NumpadMultiply": 332,
     "NumpadSubtract": 333,
