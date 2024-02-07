@@ -19,7 +19,8 @@ class RaylibJs {
         this.dt = undefined;
         this.targetFPS = 60;
         this.entryFunction = undefined;
-        this.pressedKeys = new Set();
+        this.prevPressedKeyState = new Set();
+        this.currentPressedKeyState = new Set();
         this.quit = false;
     }
 
@@ -48,9 +49,13 @@ class RaylibJs {
         });
 
         const keyDown = (e) => {
-            this.pressedKeys.add(glfwKeyMapping[e.code]);
+            this.currentPressedKeyState.add(glfwKeyMapping[e.code]);
+        };
+        const keyUp = (e) => {
+            this.currentPressedKeyState.delete(glfwKeyMapping[e.code]);
         };
         window.addEventListener("keydown", keyDown);
+        window.addEventListener("keyup", keyUp);
 
         this.wasm.instance.exports.main();
         const next = (timestamp) => {
@@ -78,6 +83,15 @@ class RaylibJs {
         document.title = cstr_by_ptr(buffer, title_ptr);
     }
 
+    WindowShouldClose(){
+        return false;
+    }
+
+    SetWindowSize(width, height) {
+        this.ctx.canvas.width = width;
+        this.ctx.canvas.height = height;
+    }
+
     SetTargetFPS(fps) {
         console.log(`The game wants to run at ${fps} FPS, but in Web we gonna just ignore it.`);
         this.targetFPS = fps;
@@ -98,7 +112,8 @@ class RaylibJs {
     BeginDrawing() {}
 
     EndDrawing() {
-        this.pressedKeys.clear();
+        this.prevPressedKeyState.clear();
+        this.prevPressedKeyState = new Set(this.currentPressedKeyState);
     }
 
     DrawCircleV(center_ptr, radius, color_ptr) {
@@ -145,7 +160,10 @@ class RaylibJs {
     }
 
     IsKeyPressed(key) {
-        return this.pressedKeys.has(key);
+        return !this.prevPressedKeyState.has(key) && this.currentPressedKeyState.has(key);
+    }
+    IsKeyDown(key) {
+        return this.currentPressedKeyState.has(key);
     }
 
     IsGestureDetected() {
@@ -158,7 +176,127 @@ class RaylibJs {
 }
 
 const glfwKeyMapping = {
-    "Enter": 257,
+    "Space":          32,
+    "Quote":          39,
+    "Comma":          44,
+    "Minus":          45,
+    "Period":         46,
+    "Slash":          47,
+    "Digit0":         48,
+    "Digit1":         49,
+    "Digit2":         50,
+    "Digit3":         51,
+    "Digit4":         52,
+    "Digit5":         53,
+    "Digit6":         54,
+    "Digit7":         55,
+    "Digit8":         56,
+    "Digit9":         57,
+    "Semicolon":      59,
+    "Equal":          61,
+    "KeyA":           65,
+    "KeyB":           66,
+    "KeyC":           67,
+    "KeyD":           68,
+    "KeyE":           69,
+    "KeyF":           70,
+    "KeyG":           71,
+    "KeyH":           72,
+    "KeyI":           73,
+    "KeyJ":           74,
+    "KeyK":           75,
+    "KeyL":           76,
+    "KeyM":           77,
+    "KeyN":           78,
+    "KeyO":           79,
+    "KeyP":           80,
+    "KeyQ":           81,
+    "KeyR":           82,
+    "KeyS":           83,
+    "KeyT":           84,
+    "KeyU":           85,
+    "KeyV":           86,
+    "KeyW":           87,
+    "KeyX":           88,
+    "KeyY":           89,
+    "KeyZ":           90,
+    "BracketLeft":    91,
+    "Backslash":      92,
+    "BracketRight":   93,
+    "Backquote":      96,
+    //  GLFW_KEY_WORLD_1   161 /* non-US #1 */
+    //  GLFW_KEY_WORLD_2   162 /* non-US #2 */
+    "Escape":         256,
+    "Enter":          257,
+    "Tab":            258,
+    "Backspace":      259,
+    "Insert":         260,
+    "Delete":         261,
+    "ArrowRight":     262,
+    "ArrowLeft":      263,
+    "ArrowDown":      264,
+    "ArrowUp":        265,
+    "PageUp":         266,
+    "PageDown":       267,
+    "Home":           268,
+    "End":            269,
+    "CapsLock":       280,
+    "ScrollLock":     281,
+    "NumLock":        282,
+    "PrintScreen":    283,
+    "Pause":          284,
+    "F1":             290,
+    "F2":             291,
+    "F3":             292,
+    "F4":             293,
+    "F5":             294,
+    "F6":             295,
+    "F7":             296,
+    "F8":             297,
+    "F9":             298,
+    "F10":            299,
+    "F11":            300,
+    "F12":            301,
+    "F13":            302,
+    "F14":            303,
+    "F15":            304,
+    "F16":            305,
+    "F17":            306,
+    "F18":            307,
+    "F19":            308,
+    "F20":            309,
+    "F21":            310,
+    "F22":            311,
+    "F23":            312,
+    "F24":            313,
+    "F25":            314,
+    "NumPad0":        320,
+    "NumPad1":        321,
+    "NumPad2":        322,
+    "NumPad3":        323,
+    "NumPad4":        324,
+    "NumPad5":        325,
+    "NumPad6":        326,
+    "NumPad7":        327,
+    "NumPad8":        328,
+    "NumPad9":        329,
+    "NumpadDecima":   330,
+    "NumpadDivide":   331,
+    "NumpadMultiply": 332,
+    "NumpadSubtract": 333,
+    "NumpadAdd":      334,
+    "NumpadEnter":    335,
+    "NumpadEqual":    336,
+    "ShiftLeft":      340,
+    "ControlLeft" :   341,
+    "AltLeft":        342,
+    "MetaLeft":       343,
+    "ShiftRight":     344,
+    "ControlRight":   345,
+    "AltRight":       346,
+    "MetaRight":      347,
+    "ContextMenu":    348,
+    //  GLFW_KEY_LAST   GLFW_KEY_MENU
 }
 
 function cstrlen(mem, ptr) {
