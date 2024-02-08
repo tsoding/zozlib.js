@@ -12,6 +12,8 @@ function make_environment(env) {
 }
 
 class RaylibJs {
+    #FONT_SCALE_MAGIC = 0.65;
+
     #reset() {
         this.previous = undefined;
         this.wasm = undefined;
@@ -21,6 +23,7 @@ class RaylibJs {
         this.entryFunction = undefined;
         this.prevPressedKeyState = new Set();
         this.currentPressedKeyState = new Set();
+        this.currentMousePosition = {x: 0, y: 0};
         this.quit = false;
     }
 
@@ -54,8 +57,13 @@ class RaylibJs {
         const keyUp = (e) => {
             this.currentPressedKeyState.delete(glfwKeyMapping[e.code]);
         };
+        const mouseMove = (e) => {
+            this.currentMousePosition = {x: e.clientX, y: e.clientY};
+        }
+
         window.addEventListener("keydown", keyDown);
         window.addEventListener("keyup", keyUp);
+        window.addEventListener("mousemove", mouseMove);
 
         this.wasm.instance.exports.main();
         const next = (timestamp) => {
@@ -141,7 +149,7 @@ class RaylibJs {
         // magical factor.
         //
         // It would be nice to have a better approach...
-        fontSize *= 0.65;
+        fontSize *= this.#FONT_SCALE_MAGIC;
         this.ctx.fillStyle = color;
         // TODO: since the default font is part of Raylib the css that defines it should be located in raylib.js and not in index.html
         this.ctx.font = `${fontSize}px grixel`;
@@ -165,6 +173,56 @@ class RaylibJs {
 
     IsGestureDetected() {
         return false;
+    }
+
+    GetMousePosition(result_ptr) {
+        const bcrect = this.ctx.canvas.getBoundingClientRect();
+        const x = this.currentMousePosition.x - bcrect.left;
+        const y = this.currentMousePosition.y - bcrect.top;
+
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        new Float32Array(buffer, result_ptr, 2).set([x, y]);
+    }
+
+    CheckCollisionPointRec(point_ptr, rec_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [x, y] = new Float32Array(buffer, point_ptr, 2);
+        const [rx, ry, rw, rh] = new Float32Array(buffer, rec_ptr, 4);
+        return ((x >= rx) && x <= (rx + rw) && (y >= ry) && y <= (ry + rh));
+    }
+
+    Fade(result_ptr, color_ptr, alpha) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [r, g, b, _] = new Uint8Array(buffer, color_ptr, 4);
+        const newA = Math.max(0, Math.min(255, 255.0*alpha));
+        new Uint8Array(buffer, result_ptr, 4).set([r, g, b, newA]);
+    }
+
+    DrawRectangleRec(rec_ptr, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
+        const color = getColorFromMemory(buffer, color_ptr);
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x, y, w, h);
+    }
+
+    DrawRectangleLinesEx(rec_ptr, lineThick, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
+        const color = getColorFromMemory(buffer, color_ptr);
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = lineThick;
+        this.ctx.strokeRect(x + lineThick/2, y + lineThick/2, w - lineThick, h - lineThick);
+    }
+
+    MeasureText(text_ptr, fontSize) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const text = cstr_by_ptr(buffer, text_ptr);
+
+        // TODO:
+        fontSize *= this.#FONT_SCALE_MAGIC;
+        this.ctx.font = `${fontSize}px grixel`;
+        return this.ctx.measureText(text).width;
     }
 
     raylib_js_set_entry(entry) {

@@ -10,7 +10,7 @@
             transform: translate(-50%, -50%);
             border: 1px solid black
         }
-        
+
         #raylib-example-select {
             display: block;
             max-width: 8rem;
@@ -45,9 +45,10 @@
     <script>
         const wasmPaths = {
             "tsoding": ["game",],
-            "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys",],
+            "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys"],
+            "shapes": ["shapes_colors_palette"]
         }
-        
+
         const raylibExampleSelect = document.getElementById("raylib-example-select");
 
         for (const exampleCategory in wasmPaths){
@@ -57,7 +58,7 @@
             }
             raylibExampleSelect.innerHTML += "</optgroup>"
         }
-        
+
         const { protocol } = window.location;
         const isHosted = protocol !== "file:";
         let raylibJs = undefined;
@@ -86,7 +87,7 @@
                         `;
                 });
             }
-            
+
         }
 
         startRaylib("game");
