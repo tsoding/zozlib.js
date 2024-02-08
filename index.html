@@ -10,6 +10,11 @@
             height: 100%;
             transform: translate(-50%, -50%);
         }
+        
+        #raylib-example-select {
+            display: block;
+            max-width: 8rem;
+        }
 
         .not-hosted-msg {
             text-align: center;
@@ -32,33 +37,57 @@
     <script src="raylib.js"></script>
 </head>
 <body>
+    <label for="raylib-example-select">Choose an Example:</label>
+        <select id="raylib-example-select" onchange="startRaylib(this.value)">
+        <!-- This is populated by js -->
+        </select>
     <canvas id="game"></canvas>
     <script>
+        const wasmPaths = {
+            "tsoding": ["game",],
+            "core": ["core_basic_window", "core_basic_screen_manager",],
+        }
+        
+        const raylibExampleSelect = document.getElementById("raylib-example-select");
+
+        for (const exampleCategory in wasmPaths){
+            raylibExampleSelect.innerHTML += `<optgroup label="${exampleCategory}">`
+            for (const example of wasmPaths[exampleCategory]){
+                raylibExampleSelect.innerHTML += `<option>${example}</option>`
+            }
+            raylibExampleSelect.innerHTML += "</optgroup>"
+        }
+        
         const { protocol } = window.location;
         const isHosted = protocol !== "file:";
 
-        if (isHosted) {
-            const raylibJs = new RaylibJs();
-            raylibJs.start({
-                //wasmPath: "wasm/core_basic_window.wasm",
-                //wasmPath: "wasm/core_basic_screen_manager.wasm",
-                wasmPath: "wasm/game.wasm",
-                canvasId: "game",
-            });
-        } else {
-            window.addEventListener("load", () => {
-                document.body.innerHTML = `
-                    <div class="not-hosted-msg">
-                        <div class="important">
-                          <p>Unfortunately, due to CORs restrictions, the wasm assembly cannot be fetched.</p>
-                          <p>Please navigate to this location using a web server.</p>
-                          <p>If you have Python 3 on your system you can just do:</p>
-                        </div>
-                        <code>$ python3 -m http.server 6969</code>
-                    </div>
-                `;
-            });
+        function startRaylib(selectedWasm){
+            if (isHosted) {
+                const raylibJs = new RaylibJs();
+                raylibJs.start({
+                    //wasmPath: "wasm/core_basic_window.wasm",
+                    // wasmPath: "wasm/core_basic_screen_manager.wasm",
+                    wasmPath: `wasm/${selectedWasm}.wasm`,
+                    canvasId: "game",
+                });
+            } else {
+                window.addEventListener("load", () => {
+                    document.body.innerHTML = `
+<div class="not-hosted-msg">
+    <div class="important">
+        <p>Unfortunately, due to CORs restrictions, the wasm assembly cannot be fetched.</p>
+        <p>Please navigate to this location using a web server.</p>
+        <p>If you have Python 3 on your system you can just do:</p>
+    </div>
+    <code>$ python3 -m http.server 6969</code>
+</div>
+`;
+                });
+            }
+            
         }
+
+        startRaylib("game");
     </script>
 </body>
 </html>
