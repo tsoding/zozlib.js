@@ -21,6 +21,7 @@ class RaylibJs {
         this.entryFunction = undefined;
         this.prevPressedKeyState = new Set();
         this.currentPressedKeyState = new Set();
+        this.currentMouseWheelMoveState = 0;
         this.quit = false;
     }
 
@@ -54,8 +55,13 @@ class RaylibJs {
         const keyUp = (e) => {
             this.currentPressedKeyState.delete(glfwKeyMapping[e.code]);
         };
+        const wheelMove = (e) => {
+          this.currentMouseWheelMoveState = Math.sign(-event.deltaY);
+        };
+        
         window.addEventListener("keydown", keyDown);
         window.addEventListener("keyup", keyUp);
+        window.addEventListener("wheel", wheelMove);
 
         this.wasm.instance.exports.main();
         const next = (timestamp) => {
@@ -111,6 +117,7 @@ class RaylibJs {
     EndDrawing() {
         this.prevPressedKeyState.clear();
         this.prevPressedKeyState = new Set(this.currentPressedKeyState);
+        this.currentMouseWheelMoveState = 0.0;
     }
 
     DrawCircleV(center_ptr, radius, color_ptr) {
@@ -162,7 +169,9 @@ class RaylibJs {
     IsKeyDown(key) {
         return this.currentPressedKeyState.has(key);
     }
-
+    GetMouseWheelMove() {
+      return this.currentMouseWheelMoveState;
+    }
     IsGestureDetected() {
         return false;
     }
