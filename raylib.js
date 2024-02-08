@@ -101,6 +101,8 @@ class RaylibJs {
     }
 
     GetFrameTime() {
+        // TODO: This is a stopgap solution to prevent sudden jumps in dt when the user switches to a differen tab.
+        // We need a proper handling of Target FPS here.
         return Math.min(this.dt, 1.0/this.targetFPS);
     }
 
