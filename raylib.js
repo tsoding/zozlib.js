@@ -177,6 +177,7 @@ class RaylibJs {
     }
 
     TextFormat(... args){ 
+        // TODO: Implement printf style formatting for TextFormat
         return args[0];
     }
 
