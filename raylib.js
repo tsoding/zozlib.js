@@ -56,7 +56,7 @@ class RaylibJs {
             this.currentPressedKeyState.delete(glfwKeyMapping[e.code]);
         };
         const wheelMove = (e) => {
-          this.currentMouseWheelMoveState = Math.sign(-event.deltaY);
+          this.currentMouseWheelMoveState = Math.sign(-e.deltaY);
         };
         
         window.addEventListener("keydown", keyDown);
