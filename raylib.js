@@ -12,6 +12,13 @@ function make_environment(env) {
 }
 
 class RaylibJs {
+    // TODO: We stole the font from the website
+    // (https://raylib.com/) and it's slightly different than
+    // the one that is "baked" into Raylib library itself. To
+    // account for the differences we scale the size with a
+    // magical factor.
+    //
+    // It would be nice to have a better approach...
     #FONT_SCALE_MAGIC = 0.65;
 
     #reset() {
@@ -142,13 +149,6 @@ class RaylibJs {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         const color = getColorFromMemory(buffer, color_ptr);
-        // TODO: We stole the font from the website
-        // (https://raylib.com/) and it's slightly different than
-        // the one that is "baked" into Raylib library itself. To
-        // account for the differences we scale the size with a
-        // magical factor.
-        //
-        // It would be nice to have a better approach...
         fontSize *= this.#FONT_SCALE_MAGIC;
         this.ctx.fillStyle = color;
         // TODO: since the default font is part of Raylib the css that defines it should be located in raylib.js and not in index.html
@@ -218,8 +218,6 @@ class RaylibJs {
     MeasureText(text_ptr, fontSize) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
-
-        // TODO:
         fontSize *= this.#FONT_SCALE_MAGIC;
         this.ctx.font = `${fontSize}px grixel`;
         return this.ctx.measureText(text).width;
