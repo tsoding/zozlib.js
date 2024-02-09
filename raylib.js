@@ -30,6 +30,7 @@ class RaylibJs {
         this.entryFunction = undefined;
         this.prevPressedKeyState = new Set();
         this.currentPressedKeyState = new Set();
+        this.currentMouseWheelMoveState = 0;
         this.currentMousePosition = {x: 0, y: 0};
         this.quit = false;
     }
@@ -64,12 +65,15 @@ class RaylibJs {
         const keyUp = (e) => {
             this.currentPressedKeyState.delete(glfwKeyMapping[e.code]);
         };
+        const wheelMove = (e) => {
+          this.currentMouseWheelMoveState = Math.sign(-e.deltaY);
+        };
         const mouseMove = (e) => {
             this.currentMousePosition = {x: e.clientX, y: e.clientY};
-        }
-
+        };
         window.addEventListener("keydown", keyDown);
         window.addEventListener("keyup", keyUp);
+        window.addEventListener("wheel", wheelMove);
         window.addEventListener("mousemove", mouseMove);
 
         this.wasm.instance.exports.main();
@@ -126,6 +130,7 @@ class RaylibJs {
     EndDrawing() {
         this.prevPressedKeyState.clear();
         this.prevPressedKeyState = new Set(this.currentPressedKeyState);
+        this.currentMouseWheelMoveState = 0.0;
     }
 
     DrawCircleV(center_ptr, radius, color_ptr) {
@@ -170,9 +175,16 @@ class RaylibJs {
     IsKeyDown(key) {
         return this.currentPressedKeyState.has(key);
     }
-
+    GetMouseWheelMove() {
+      return this.currentMouseWheelMoveState;
+    }
     IsGestureDetected() {
         return false;
+    }
+
+    TextFormat(... args){ 
+        // TODO: Implement printf style formatting for TextFormat
+        return args[0];
     }
 
     GetMousePosition(result_ptr) {
