@@ -51,6 +51,7 @@
         }
 
         const raylibExampleSelect = document.getElementById("raylib-example-select");
+        const canvas = document.getElementById("game");
 
         for (const exampleCategory in wasmPaths){
             raylibExampleSelect.innerHTML += `<optgroup label="${exampleCategory}">`
@@ -63,16 +64,45 @@
         const { protocol } = window.location;
         const isHosted = protocol !== "file:";
         let raylibJs = undefined;
+        let removeEventListeners = undefined
+
+        function addEventListeners(raylibJs) {
+            const keyDown = (e) => {
+                raylibJs.handleKeyDown(glfwKeyMapping[e.code]);
+            };
+            const keyUp = (e) => {
+                raylibJs.handleKeyUp(glfwKeyMapping[e.code]);
+            };
+            const wheelMove = (e) => {
+                raylibJs.handleWheelMove(Math.sign(-e.deltaY));
+            };
+            const mouseMove = (e) => {
+                raylibJs.handleMouseMove({x: e.clientX, y: e.clientY});
+            };
+            
+            window.addEventListener("keydown", keyDown);
+            window.addEventListener("keyup", keyUp);
+            window.addEventListener("wheel", wheelMove);
+            window.addEventListener("mousemove", mouseMove);
+            return () => {
+                window.removeEventListener("mousemove", mouseMove);
+                window.removeEventListener("wheel", wheelMove);
+                window.removeEventListener("keyup", keyUp);
+                window.removeEventListener("keydown", keyDown);
+            }
+        }
 
         function startRaylib(selectedWasm){
             if (isHosted) {
                 if (raylibJs !== undefined) {
+                    removeEventListeners();
                     raylibJs.stop();
                 }
-                raylibJs = new RaylibJs();
+                raylibJs = new RaylibJs(canvas);
+                removeEventListeners = addEventListeners(raylibJs);
                 raylibJs.start({
                     wasmPath: `wasm/${selectedWasm}.wasm`,
-                    canvasId: "game",
+                    debug: true,
                 });
             } else {
                 window.addEventListener("load", () => {

@@ -2,7 +2,7 @@ function make_environment(env) {
     return new Proxy(env, {
         get(target, prop, receiver) {
             if (env[prop] !== undefined) {
-                return env[prop].bind(env);
+                return env[prop]
             }
             return (...args) => {
                 throw new Error(`NOT IMPLEMENTED: ${prop} ${args}`);
@@ -11,7 +11,7 @@ function make_environment(env) {
     });
 }
 
-class RaylibJs {
+class RaylibJsBase {
     // TODO: We stole the font from the website
     // (https://raylib.com/) and it's slightly different than
     // the one that is "baked" into Raylib library itself. To
@@ -24,7 +24,6 @@ class RaylibJs {
     #reset() {
         this.previous = undefined;
         this.wasm = undefined;
-        this.ctx = undefined;
         this.dt = undefined;
         this.targetFPS = 60;
         this.entryFunction = undefined;
@@ -34,106 +33,85 @@ class RaylibJs {
         this.currentMousePosition = {x: 0, y: 0};
         this.quit = false;
     }
-
-    constructor() {
-        this.#reset();
-    }
-
-    stop() {
-        this.quit = true;
-    }
-
-    async start({ wasmPath, canvasId }) {
-        if (this.wasm !== undefined) {
-            console.error("The game is already running. Please stop() it first.");
-            return;
-        }
-
-        const canvas = document.getElementById(canvasId);
+    
+    constructor(canvas) {
         this.ctx = canvas.getContext("2d");
         if (this.ctx === null) {
             throw new Error("Could not create 2d canvas context");
         }
-
-        this.wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
-            env: make_environment(this)
-        });
-
-        const keyDown = (e) => {
-            this.currentPressedKeyState.add(glfwKeyMapping[e.code]);
-        };
-        const keyUp = (e) => {
-            this.currentPressedKeyState.delete(glfwKeyMapping[e.code]);
-        };
-        const wheelMove = (e) => {
-          this.currentMouseWheelMoveState = Math.sign(-e.deltaY);
-        };
-        const mouseMove = (e) => {
-            this.currentMousePosition = {x: e.clientX, y: e.clientY};
-        };
-        window.addEventListener("keydown", keyDown);
-        window.addEventListener("keyup", keyUp);
-        window.addEventListener("wheel", wheelMove);
-        window.addEventListener("mousemove", mouseMove);
-
-        this.wasm.instance.exports.main();
-        const next = (timestamp) => {
-            if (this.quit) {
-                this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-                window.removeEventListener("keydown", keyDown);
-                this.#reset()
-                return;
-            }
-            this.dt = (timestamp - this.previous)/1000.0;
-            this.previous = timestamp;
-            this.entryFunction();
-            window.requestAnimationFrame(next);
-        };
-        window.requestAnimationFrame((timestamp) => {
-            this.previous = timestamp;
-            window.requestAnimationFrame(next);
-        });
+        this.#reset();
     }
 
-    InitWindow(width, height, title_ptr) {
+    handleKeyDown(keyCode) {
+        this.currentPressedKeyState.add(keyCode);
+    }
+
+    handleKeyUp(keyCode) {
+        this.currentPressedKeyState.delete(keyCode);
+    }
+
+    handleWheelMove(direction) {
+        this.currentMouseWheelMoveState = direction
+    }
+
+    handleMouseMove(position) {
+        this.currentMousePosition = position
+    }
+
+    async start({ wasmPath, debug }) {
+        if (this.wasm !== undefined) {
+            throw new Error("The game is already running. Please stop() it first.");
+        }
+        this.wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
+            env: debug ? make_environment(this) : this
+        });
+        this.wasm.instance.exports.main();
+    }
+    
+    stop() {
+        this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+        this.#reset()
+    }
+
+    InitWindow = (width, height, title_ptr) => {
         this.ctx.canvas.width = width;
         this.ctx.canvas.height = height;
         const buffer = this.wasm.instance.exports.memory.buffer;
         document.title = cstr_by_ptr(buffer, title_ptr);
     }
 
-    WindowShouldClose(){
+    WindowShouldClose = () => {
         return false;
     }
 
-    SetTargetFPS(fps) {
+    SetTargetFPS = (fps) => {
         console.log(`The game wants to run at ${fps} FPS, but in Web we gonna just ignore it.`);
         this.targetFPS = fps;
     }
 
-    GetScreenWidth() {
+    GetScreenWidth = () => {
         return this.ctx.canvas.width;
     }
 
-    GetScreenHeight() {
+    GetScreenHeight = () => {
         return this.ctx.canvas.height;
     }
 
-    GetFrameTime() {
+    GetFrameTime = () => {
         // TODO: This is a stopgap solution to prevent sudden jumps in dt when the user switches to a differen tab.
         // We need a proper handling of Target FPS here.
         return Math.min(this.dt, 1.0/this.targetFPS);
     }
 
-    BeginDrawing() {}
+    BeginDrawing = () => {}
 
-    EndDrawing() {
+    EndDrawing = () => {
         this.prevPressedKeyState.clear();
         this.prevPressedKeyState = new Set(this.currentPressedKeyState);
         this.currentMouseWheelMoveState = 0.0;
     }
 
-    DrawCircleV(center_ptr, radius, color_ptr) {
+    DrawCircleV = (center_ptr, radius, color_ptr) => {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [x, y] = new Float32Array(buffer, center_ptr, 2);
         const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
@@ -144,13 +122,13 @@ class RaylibJs {
         this.ctx.fill();
     }
 
-    ClearBackground(color_ptr) {
+    ClearBackground = (color_ptr) => {
         this.ctx.fillStyle = getColorFromMemory(this.wasm.instance.exports.memory.buffer, color_ptr);
         this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
     }
 
     // RLAPI void DrawText(const char *text, int posX, int posY, int fontSize, Color color);       // Draw text (using default font)
-    DrawText(text_ptr, posX, posY, fontSize, color_ptr) {
+    DrawText = (text_ptr, posX, posY, fontSize, color_ptr) => {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         const color = getColorFromMemory(buffer, color_ptr);
@@ -162,32 +140,32 @@ class RaylibJs {
     }
 
     // RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
-    DrawRectangle(posX, posY, width, height, color_ptr) {
+    DrawRectangle = (posX, posY, width, height, color_ptr) => {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.fillStyle = color;
         this.ctx.fillRect(posX, posY, width, height);
     }
 
-    IsKeyPressed(key) {
+    IsKeyPressed = (key) => {
         return !this.prevPressedKeyState.has(key) && this.currentPressedKeyState.has(key);
     }
-    IsKeyDown(key) {
+    IsKeyDown = (key) => {
         return this.currentPressedKeyState.has(key);
     }
-    GetMouseWheelMove() {
+    GetMouseWheelMove = () => {
       return this.currentMouseWheelMoveState;
     }
-    IsGestureDetected() {
+    IsGestureDetected = () => {
         return false;
     }
 
-    TextFormat(... args){ 
+    TextFormat = (... args) => { 
         // TODO: Implement printf style formatting for TextFormat
         return args[0];
     }
 
-    GetMousePosition(result_ptr) {
+    GetMousePosition = (result_ptr) => {
         const bcrect = this.ctx.canvas.getBoundingClientRect();
         const x = this.currentMousePosition.x - bcrect.left;
         const y = this.currentMousePosition.y - bcrect.top;
@@ -196,21 +174,21 @@ class RaylibJs {
         new Float32Array(buffer, result_ptr, 2).set([x, y]);
     }
 
-    CheckCollisionPointRec(point_ptr, rec_ptr) {
+    CheckCollisionPointRec = (point_ptr, rec_ptr) => {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [x, y] = new Float32Array(buffer, point_ptr, 2);
         const [rx, ry, rw, rh] = new Float32Array(buffer, rec_ptr, 4);
         return ((x >= rx) && x <= (rx + rw) && (y >= ry) && y <= (ry + rh));
     }
 
-    Fade(result_ptr, color_ptr, alpha) {
+    Fade = (result_ptr, color_ptr, alpha) => {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [r, g, b, _] = new Uint8Array(buffer, color_ptr, 4);
         const newA = Math.max(0, Math.min(255, 255.0*alpha));
         new Uint8Array(buffer, result_ptr, 4).set([r, g, b, newA]);
     }
 
-    DrawRectangleRec(rec_ptr, color_ptr) {
+    DrawRectangleRec = (rec_ptr, color_ptr) => {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
         const color = getColorFromMemory(buffer, color_ptr);
@@ -218,7 +196,7 @@ class RaylibJs {
         this.ctx.fillRect(x, y, w, h);
     }
 
-    DrawRectangleLinesEx(rec_ptr, lineThick, color_ptr) {
+    DrawRectangleLinesEx = (rec_ptr, lineThick, color_ptr) => {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
         const color = getColorFromMemory(buffer, color_ptr);
@@ -227,7 +205,7 @@ class RaylibJs {
         this.ctx.strokeRect(x + lineThick/2, y + lineThick/2, w - lineThick, h - lineThick);
     }
 
-    MeasureText(text_ptr, fontSize) {
+    MeasureText = (text_ptr, fontSize) => {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         fontSize *= this.#FONT_SCALE_MAGIC;
@@ -235,8 +213,35 @@ class RaylibJs {
         return this.ctx.measureText(text).width;
     }
 
-    raylib_js_set_entry(entry) {
+    raylib_js_set_entry = (entry) => {
         this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);
+    }
+}
+
+class RaylibJs extends RaylibJsBase {
+    constructor(canvas) {
+        super(canvas);
+        this.frameId = undefined
+    }
+
+    next = (timestamp) => {
+        this.dt = (timestamp - this.previous)/1000.0;
+        this.previous = timestamp;
+        this.entryFunction();
+        this.frameId = requestAnimationFrame(this.next);
+    }
+
+    async start(params) {
+        await super.start(params);
+        this.frameId = requestAnimationFrame((timestamp) => {
+            this.previous = timestamp
+            this.frameId= requestAnimationFrame(this.next)
+        });
+    }
+
+    stop() {
+        cancelAnimationFrame(this.frameId);
+        super.stop();
     }
 }
 
