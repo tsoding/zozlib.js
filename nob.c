@@ -15,8 +15,9 @@ bool build_native(const char *examples_dir, const char *example)
 {
     bool result = true;
     Nob_Cmd cmd = {0};
-
+    Nob_String_Builder exe_sb = {0};
     Nob_String_Builder example_sb = {0};
+
     nob_sb_append_cstr(&example_sb, examples_dir);
     nob_sb_append_cstr(&example_sb, "/");
     nob_sb_append_cstr(&example_sb, example);
@@ -24,8 +25,12 @@ bool build_native(const char *examples_dir, const char *example)
 
     Nob_String_View example_sv = nob_sv_from_cstr(example);
     const char *exe = nob_temp_sv_to_cstr(nob_sv_chop_by_delim(&example_sv, '.'));
-
-    Nob_String_Builder exe_sb = {0};
+    Nob_String_View c_ext_sv = nob_sv_from_cstr("c");
+   
+    // example_sv contains the file extension after choping
+    // Do not build stuffs that does not have extension `c`
+    if(!nob_sv_eq(example_sv, c_ext_sv)) nob_return_defer(true);
+   
     nob_sb_append_cstr(&exe_sb, "./build");
     nob_sb_append_cstr(&exe_sb, "/");
     nob_sb_append_cstr(&exe_sb, exe);
@@ -54,8 +59,9 @@ bool build_wasm(const char *examples_dir, const char *example)
 {
     bool result = true;
     Nob_Cmd cmd = {0};
-
+    Nob_String_Builder wasm_sb = {0};
     Nob_String_Builder example_sb = {0};
+
     nob_sb_append_cstr(&example_sb, examples_dir);
     nob_sb_append_cstr(&example_sb, "/");
     nob_sb_append_cstr(&example_sb, example);
@@ -63,8 +69,12 @@ bool build_wasm(const char *examples_dir, const char *example)
 
     Nob_String_View example_sv = nob_sv_from_cstr(example);
     const char *wasm = nob_temp_sv_to_cstr(nob_sv_chop_by_delim(&example_sv, '.'));
+    Nob_String_View c_ext_sv = nob_sv_from_cstr("c");
+   
+    // example_sv contains the file extension after choping
+    // Do not build stuffs that does not have extension `c`
+    if(!nob_sv_eq(example_sv, c_ext_sv)) nob_return_defer(true);
 
-    Nob_String_Builder wasm_sb = {0};
     nob_sb_append_cstr(&wasm_sb, "./wasm");
     nob_sb_append_cstr(&wasm_sb, "/");
     nob_sb_append_cstr(&wasm_sb, wasm);
@@ -116,7 +126,7 @@ int main(int argc, char **argv)
             if (strcmp(examples.items[i], ".") == 0) continue;
             if (strcmp(examples.items[i], "..") == 0) continue;
 
-            build_native(examples_dir, examples.items[i]);
+            if(!build_native(examples_dir, examples.items[i])) return 1;
         }
 
         nob_log(NOB_INFO, "--- WASM ---");
@@ -125,7 +135,7 @@ int main(int argc, char **argv)
             if (strcmp(examples.items[i], ".") == 0) continue;
             if (strcmp(examples.items[i], "..") == 0) continue;
 
-            build_wasm(examples_dir, examples.items[i]);
+            if(!build_wasm(examples_dir, examples.items[i])) return 1;
         }
 
         nob_temp_reset();
