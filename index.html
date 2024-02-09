@@ -43,6 +43,7 @@
         </select>
     <canvas id="game"></canvas>
     <script>
+        // TODO: store the current example in the URL
         const wasmPaths = {
             "tsoding": ["game",],
             "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel",],
@@ -87,7 +88,6 @@
                         `;
                 });
             }
-
         }
 
         startRaylib("game");
