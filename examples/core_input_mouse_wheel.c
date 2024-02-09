@@ -37,8 +37,7 @@ void GameFrame()
         DrawRectangle(screenWidth/2 - 40, boxPositionY, 80, 80, MAROON);
 
         DrawText("Use mouse wheel to move the cube up and down!", 10, 10, 20, GRAY);
-        // TODO: implement TextFormat
-        // DrawText(TextFormat("Box position Y: %03i", boxPositionY), 10, 40, 20, LIGHTGRAY);
+        DrawText(TextFormat("Box position Y: %03i", 111, 222, 333, 444, 555), 10, 40, 20, LIGHTGRAY);
 
     EndDrawing();
 }

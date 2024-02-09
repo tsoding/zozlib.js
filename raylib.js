@@ -176,6 +176,10 @@ class RaylibJs {
         return false;
     }
 
+    TextFormat(... args){ 
+        return args[0];
+    }
+
     raylib_js_set_entry(entry) {
         this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);
     }
