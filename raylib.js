@@ -32,6 +32,7 @@ class RaylibJs {
         this.currentPressedKeyState = new Set();
         this.currentMouseWheelMoveState = 0;
         this.currentMousePosition = {x: 0, y: 0};
+        this.currentGestureState = 0; 
         this.quit = false;
     }
 
@@ -59,6 +60,10 @@ class RaylibJs {
             env: make_environment(this)
         });
 
+        canvas.oncontextmenu = function(e) {
+            e.preventDefault();
+        };
+
         const keyDown = (e) => {
             this.currentPressedKeyState.add(glfwKeyMapping[e.code]);
         };
@@ -71,10 +76,15 @@ class RaylibJs {
         const mouseMove = (e) => {
             this.currentMousePosition = {x: e.clientX, y: e.clientY};
         };
+        const gestureTap = (e) => {
+            if (e.target.id === 'game')
+                this.currentGestureState = gestureMapping.GESTURE_TAP;
+        };
         window.addEventListener("keydown", keyDown);
         window.addEventListener("keyup", keyUp);
         window.addEventListener("wheel", wheelMove);
         window.addEventListener("mousemove", mouseMove);
+        window.addEventListener("mousedown", gestureTap);
 
         this.wasm.instance.exports.main();
         const next = (timestamp) => {
@@ -131,6 +141,7 @@ class RaylibJs {
         this.prevPressedKeyState.clear();
         this.prevPressedKeyState = new Set(this.currentPressedKeyState);
         this.currentMouseWheelMoveState = 0.0;
+        this.currentGestureState = 0;
     }
 
     DrawCircleV(center_ptr, radius, color_ptr) {
@@ -178,8 +189,8 @@ class RaylibJs {
     GetMouseWheelMove() {
       return this.currentMouseWheelMoveState;
     }
-    IsGestureDetected() {
-        return false;
+    IsGestureDetected(gesture) {
+        return this.currentGestureState === gesture;
     }
 
     TextFormat(... args){ 
@@ -362,6 +373,20 @@ const glfwKeyMapping = {
     "MetaRight":      347,
     "ContextMenu":    348,
     //  GLFW_KEY_LAST   GLFW_KEY_MENU
+}
+
+const gestureMapping = {
+    GESTURE_NONE:           0,
+    GESTURE_TAP:            1,
+    GESTURE_DOUBLETAP:      2,
+    GESTURE_HOLD:           4,
+    GESTURE_DRAG:           8,
+    GESTURE_SWIPE_RIGHT:    16,
+    GESTURE_SWIPE_LEFT:     32,
+    GESTURE_SWIPE_UP:       64,
+    GESTURE_SWIPE_DOWN:     128,
+    GESTURE_PINCH_IN:       256,
+    GESTURE_PINCH_OUT:      512
 }
 
 function cstrlen(mem, ptr) {
