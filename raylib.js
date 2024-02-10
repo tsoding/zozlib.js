@@ -2,7 +2,7 @@ function make_environment(env) {
     return new Proxy(env, {
         get(target, prop, receiver) {
             if (env[prop] !== undefined) {
-                return env[prop]
+                return env[prop].bind(env);
             }
             return (...args) => {
                 throw new Error(`NOT IMPLEMENTED: ${prop} ${args}`);
@@ -11,7 +11,7 @@ function make_environment(env) {
     });
 }
 
-class RaylibJsBase {
+export class RaylibJs {
     // TODO: We stole the font from the website
     // (https://raylib.com/) and it's slightly different than
     // the one that is "baked" into Raylib library itself. To
@@ -31,14 +31,15 @@ class RaylibJsBase {
         this.currentPressedKeyState = new Set();
         this.currentMouseWheelMoveState = 0;
         this.currentMousePosition = {x: 0, y: 0};
-        this.quit = false;
+        this.frameId = undefined
     }
     
-    constructor(canvas) {
+    constructor(canvas, platform) {
         this.ctx = canvas.getContext("2d");
         if (this.ctx === null) {
             throw new Error("Could not create 2d canvas context");
         }
+        this.platform = platform
         this.#reset();
     }
 
@@ -58,60 +59,72 @@ class RaylibJsBase {
         this.currentMousePosition = position
     }
 
-    async start({ wasmPath, debug }) {
+    next = (timestamp) => {
+        this.dt = (timestamp - this.previous)/1000.0;
+        this.previous = timestamp;
+        this.entryFunction();
+        this.frameId = requestAnimationFrame(this.next);
+    }
+
+    async start({ wasmPath }) {
         if (this.wasm !== undefined) {
             throw new Error("The game is already running. Please stop() it first.");
         }
         this.wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
-            env: debug ? make_environment(this) : this
+            env: make_environment(this)
         });
         this.wasm.instance.exports.main();
+        this.frameId = requestAnimationFrame((timestamp) => {
+            this.previous = timestamp
+            this.frameId = requestAnimationFrame(this.next)
+        });
     }
     
     stop() {
+        cancelAnimationFrame(this.frameId);
         this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
         this.#reset()
     }
 
-    InitWindow = (width, height, title_ptr) => {
+    InitWindow(width, height, title_ptr) {
         this.ctx.canvas.width = width;
         this.ctx.canvas.height = height;
         const buffer = this.wasm.instance.exports.memory.buffer;
-        document.title = cstr_by_ptr(buffer, title_ptr);
+        this.platform.updateTitle(cstr_by_ptr(buffer, title_ptr))
     }
 
-    WindowShouldClose = () => {
+    WindowShouldClose() {
         return false;
     }
 
-    SetTargetFPS = (fps) => {
+    SetTargetFPS(fps) {
         console.log(`The game wants to run at ${fps} FPS, but in Web we gonna just ignore it.`);
         this.targetFPS = fps;
     }
 
-    GetScreenWidth = () => {
+    GetScreenWidth() {
         return this.ctx.canvas.width;
     }
 
-    GetScreenHeight = () => {
+    GetScreenHeight() {
         return this.ctx.canvas.height;
     }
 
-    GetFrameTime = () => {
+    GetFrameTime() {
         // TODO: This is a stopgap solution to prevent sudden jumps in dt when the user switches to a differen tab.
         // We need a proper handling of Target FPS here.
         return Math.min(this.dt, 1.0/this.targetFPS);
     }
 
-    BeginDrawing = () => {}
+    BeginDrawing() {}
 
-    EndDrawing = () => {
+    EndDrawing() {
         this.prevPressedKeyState.clear();
         this.prevPressedKeyState = new Set(this.currentPressedKeyState);
         this.currentMouseWheelMoveState = 0.0;
     }
 
-    DrawCircleV = (center_ptr, radius, color_ptr) => {
+    DrawCircleV(center_ptr, radius, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [x, y] = new Float32Array(buffer, center_ptr, 2);
         const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
@@ -122,13 +135,13 @@ class RaylibJsBase {
         this.ctx.fill();
     }
 
-    ClearBackground = (color_ptr) => {
+    ClearBackground(color_ptr) {
         this.ctx.fillStyle = getColorFromMemory(this.wasm.instance.exports.memory.buffer, color_ptr);
         this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
     }
 
     // RLAPI void DrawText(const char *text, int posX, int posY, int fontSize, Color color);       // Draw text (using default font)
-    DrawText = (text_ptr, posX, posY, fontSize, color_ptr) => {
+    DrawText(text_ptr, posX, posY, fontSize, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         const color = getColorFromMemory(buffer, color_ptr);
@@ -140,55 +153,54 @@ class RaylibJsBase {
     }
 
     // RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
-    DrawRectangle = (posX, posY, width, height, color_ptr) => {
+    DrawRectangle(posX, posY, width, height, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.fillStyle = color;
         this.ctx.fillRect(posX, posY, width, height);
     }
 
-    IsKeyPressed = (key) => {
+    IsKeyPressed(key) {
         return !this.prevPressedKeyState.has(key) && this.currentPressedKeyState.has(key);
     }
-    IsKeyDown = (key) => {
+    IsKeyDown(key) {
         return this.currentPressedKeyState.has(key);
     }
-    GetMouseWheelMove = () => {
+    GetMouseWheelMove() {
       return this.currentMouseWheelMoveState;
     }
-    IsGestureDetected = () => {
+    IsGestureDetected() {
         return false;
     }
 
-    TextFormat = (... args) => { 
+    TextFormat(... args) {
         // TODO: Implement printf style formatting for TextFormat
         return args[0];
     }
 
-    GetMousePosition = (result_ptr) => {
-        const bcrect = this.ctx.canvas.getBoundingClientRect();
-        const x = this.currentMousePosition.x - bcrect.left;
-        const y = this.currentMousePosition.y - bcrect.top;
-
+    GetMousePosition(result_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
-        new Float32Array(buffer, result_ptr, 2).set([x, y]);
+        new Float32Array(buffer, result_ptr, 2).set([
+            this.currentMousePosition.x,
+            this.currentMousePosition.y,
+        ]);
     }
 
-    CheckCollisionPointRec = (point_ptr, rec_ptr) => {
+    CheckCollisionPointRec(point_ptr, rec_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [x, y] = new Float32Array(buffer, point_ptr, 2);
         const [rx, ry, rw, rh] = new Float32Array(buffer, rec_ptr, 4);
         return ((x >= rx) && x <= (rx + rw) && (y >= ry) && y <= (ry + rh));
     }
 
-    Fade = (result_ptr, color_ptr, alpha) => {
+    Fade(result_ptr, color_ptr, alpha) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [r, g, b, _] = new Uint8Array(buffer, color_ptr, 4);
         const newA = Math.max(0, Math.min(255, 255.0*alpha));
         new Uint8Array(buffer, result_ptr, 4).set([r, g, b, newA]);
     }
 
-    DrawRectangleRec = (rec_ptr, color_ptr) => {
+    DrawRectangleRec(rec_ptr, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
         const color = getColorFromMemory(buffer, color_ptr);
@@ -196,7 +208,7 @@ class RaylibJsBase {
         this.ctx.fillRect(x, y, w, h);
     }
 
-    DrawRectangleLinesEx = (rec_ptr, lineThick, color_ptr) => {
+    DrawRectangleLinesEx(rec_ptr, lineThick, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
         const color = getColorFromMemory(buffer, color_ptr);
@@ -205,7 +217,7 @@ class RaylibJsBase {
         this.ctx.strokeRect(x + lineThick/2, y + lineThick/2, w - lineThick, h - lineThick);
     }
 
-    MeasureText = (text_ptr, fontSize) => {
+    MeasureText(text_ptr, fontSize) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         fontSize *= this.#FONT_SCALE_MAGIC;
@@ -213,39 +225,174 @@ class RaylibJsBase {
         return this.ctx.measureText(text).width;
     }
 
-    raylib_js_set_entry = (entry) => {
+    raylib_js_set_entry(entry) {
         this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);
     }
 }
 
-class RaylibJs extends RaylibJsBase {
-    constructor(canvas) {
-        super(canvas);
-        this.frameId = undefined
-    }
+const REQUEST_MESSAGE_TYPE = {
+    INIT: 0,
+    START: 1,
+    STOP: 2,
+    KEY_DOWN: 3,
+    KEY_UP: 4,
+    WHEEL_MOVE: 5,
+    MOUSE_MOVE: 6,
+}
 
-    next = (timestamp) => {
-        this.dt = (timestamp - this.previous)/1000.0;
-        this.previous = timestamp;
-        this.entryFunction();
-        this.frameId = requestAnimationFrame(this.next);
-    }
+const RESPONSE_MESSAGE_TYPE = {
+    START_SUCCESS: 0,
+    START_FAIL: 1,
+    UPDATE_TITLE: 2,
+}
 
-    async start(params) {
-        await super.start(params);
-        this.frameId = requestAnimationFrame((timestamp) => {
-            this.previous = timestamp
-            this.frameId= requestAnimationFrame(this.next)
-        });
+export function makeMessagesHandler(self) {
+    let raylibJs = undefined
+    const handlers = new Array(Object.keys(REQUEST_MESSAGE_TYPE).length)
+    handlers[REQUEST_MESSAGE_TYPE.INIT] = ({ canvas }) => {
+        raylibJs = new RaylibJs(canvas, {
+            updateTitle: (title) => {
+                self.postMessage({
+                    type: RESPONSE_MESSAGE_TYPE.UPDATE_TITLE,
+                    title
+                })
+            },
+        })
     }
-
-    stop() {
-        cancelAnimationFrame(this.frameId);
-        super.stop();
+    handlers[REQUEST_MESSAGE_TYPE.START] = async ({ params }) => {
+        try {
+            await self.fonts.ready
+            await raylibJs.start(params)
+            self.postMessage({
+                type: RESPONSE_MESSAGE_TYPE.START_SUCCESS
+            })
+        } catch (error) {
+            console.log(error)
+            self.postMessage({
+                type: RESPONSE_MESSAGE_TYPE.START_FAIL,
+                reason: String(error)
+            })
+        }
+    }
+    handlers[REQUEST_MESSAGE_TYPE.STOP] = () => {
+        raylibJs.stop()
+    }
+    handlers[REQUEST_MESSAGE_TYPE.KEY_DOWN] = ({ keyCode }) => {
+        raylibJs.handleKeyDown(keyCode)
+    }
+    handlers[REQUEST_MESSAGE_TYPE.KEY_UP] = ({ keyCode }) => {
+        raylibJs.handleKeyUp(keyCode)
+    }
+    handlers[REQUEST_MESSAGE_TYPE.WHEEL_MOVE] = ({ direction }) => {
+        raylibJs.handleWheelMove(direction)
+    }
+    handlers[REQUEST_MESSAGE_TYPE.MOUSE_MOVE] = ({ position }) => {
+        raylibJs.handleMouseMove(position)
+    }
+    return (event) => {
+        if (handlers[event.data.type]) {
+            handlers[event.data.type](event.data)
+        } else {
+            console.error("Unhandled message", event)
+        }
     }
 }
 
-const glfwKeyMapping = {
+export class RaylibJsWorker {
+
+    handleMessage = (event) => {
+        switch (event.data.type) {
+        case RESPONSE_MESSAGE_TYPE.START_SUCCESS: {
+            if (this.onStartSuccess) {
+                this.onStartSuccess()
+                return
+            }
+        }
+        case RESPONSE_MESSAGE_TYPE.START_FAIL: {
+            if (this.onStartFail) {
+                this.onStartFail(new Error(event.data.reason))
+                return
+            }
+        }
+        case RESPONSE_MESSAGE_TYPE.UPDATE_TITLE: {
+            window.document.title = event.data.title
+            break
+        }
+        default:
+            console.error("Unhandled worker message", event)
+        }
+    }
+
+    constructor(worker, canvas) {
+        this.worker = worker
+        this.startPromise = undefined
+        this.onStartSuccess = undefined
+        this.onStartFail = undefined
+        this.worker.addEventListener("message", this.handleMessage)
+        // https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas
+        const offscreen = canvas.transferControlToOffscreen()
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.INIT,
+            canvas: offscreen,
+        }, [offscreen])
+    }
+
+    async start(params) {
+        if (this.startPromise) {
+            return this.startPromise
+        }
+        this.startPromise = new Promise((resolve, reject) => {
+            this.onStartSuccess = resolve
+            this.onStartFail = reject
+        }).then(() => {
+            this.startPromise = undefined
+            this.onStartSuccess = undefined
+            this.onStartFail = undefined
+        })
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.START,
+            params
+        })
+        return this.startPromise
+    }
+
+    stop() {
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.STOP
+        })
+    }
+
+    handleKeyDown(keyCode) {
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.KEY_DOWN,
+            keyCode
+        })
+    }
+
+    handleKeyUp(keyCode) {
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.KEY_UP,
+            keyCode
+        })
+    }
+
+    handleWheelMove(direction) {
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.WHEEL_MOVE,
+            direction
+        })
+    }
+
+    handleMouseMove(position) {
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.MOUSE_MOVE,
+            position
+        })
+    }
+
+}
+
+export const glfwKeyMapping = {
     "Space":          32,
     "Quote":          39,
     "Comma":          44,

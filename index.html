@@ -34,15 +34,14 @@
             src: url(fonts/acme_7_wide_xtnd.woff);
         }
     </style>
-    <script src="raylib.js"></script>
 </head>
 <body>
     <label for="raylib-example-select">Choose an Example:</label>
         <select id="raylib-example-select" onchange="startRaylib(this.value)">
         <!-- This is populated by js -->
         </select>
-    <canvas id="game"></canvas>
-    <script>
+    <script type="module">
+        import { RaylibJs, RaylibJsWorker, glfwKeyMapping } from "./raylib.js"
         // TODO: store the current example in the URL
         const wasmPaths = {
             "tsoding": ["game",],
@@ -63,8 +62,11 @@
 
         const { protocol } = window.location;
         const isHosted = protocol !== "file:";
-        let raylibJs = undefined;
         let removeEventListeners = undefined
+        const worker = new Worker("raylib.worker.js", {
+            type: "module",
+        });
+        const raylibJs = new RaylibJsWorker(worker, canvas);
 
         function addEventListeners(raylibJs) {
             const keyDown = (e) => {
@@ -77,7 +79,11 @@
                 raylibJs.handleWheelMove(Math.sign(-e.deltaY));
             };
             const mouseMove = (e) => {
-                raylibJs.handleMouseMove({x: e.clientX, y: e.clientY});
+                const rect = canvas.getBoundingClientRect();
+                raylibJs.handleMouseMove({
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top,
+                });
             };
             
             window.addEventListener("keydown", keyDown);
@@ -92,17 +98,15 @@
             }
         }
 
-        function startRaylib(selectedWasm){
+        window.startRaylib = (selectedWasm) => {
             if (isHosted) {
-                if (raylibJs !== undefined) {
+                if (removeEventListeners !== undefined) {
                     removeEventListeners();
                     raylibJs.stop();
                 }
-                raylibJs = new RaylibJs(canvas);
                 removeEventListeners = addEventListeners(raylibJs);
                 raylibJs.start({
                     wasmPath: `wasm/${selectedWasm}.wasm`,
-                    debug: true,
                 });
             } else {
                 window.addEventListener("load", () => {
