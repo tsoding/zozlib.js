@@ -23,6 +23,10 @@ bool build_native(const char *examples_dir, const char *example)
     nob_sb_append_cstr(&example_sb, example);
     nob_sb_append_null(&example_sb);
 
+    // Do not proceed if the c file is not regular file.
+    // TODO: Implement Building Projects Recursively within examples directoy. 
+    if (nob_get_file_type(example_sb.items) != NOB_FILE_REGULAR) nob_return_defer(true);
+
     Nob_String_View example_sv = nob_sv_from_cstr(example);
     const char *exe = nob_temp_sv_to_cstr(nob_sv_chop_by_delim(&example_sv, '.'));
     Nob_String_View c_ext_sv = nob_sv_from_cstr("c");
@@ -66,6 +70,10 @@ bool build_wasm(const char *examples_dir, const char *example)
     nob_sb_append_cstr(&example_sb, "/");
     nob_sb_append_cstr(&example_sb, example);
     nob_sb_append_null(&example_sb);
+
+    // Do not proceed if the c file is not regular file.
+    // TODO: Implement Building Projects Recursively within examples directoy. 
+    if (nob_get_file_type(example_sb.items) != NOB_FILE_REGULAR) nob_return_defer(true);
 
     Nob_String_View example_sv = nob_sv_from_cstr(example);
     const char *wasm = nob_temp_sv_to_cstr(nob_sv_chop_by_delim(&example_sv, '.'));
