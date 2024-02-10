@@ -248,16 +248,20 @@ const RESPONSE_MESSAGE_TYPE = {
 
 export function makeMessagesHandler(self) {
     let raylibJs = undefined
+    const platform = {
+        updateTitle: (title) => {
+            self.postMessage({
+                type: RESPONSE_MESSAGE_TYPE.UPDATE_TITLE,
+                title
+            })
+        },
+    }
     const handlers = new Array(Object.keys(REQUEST_MESSAGE_TYPE).length)
     handlers[REQUEST_MESSAGE_TYPE.INIT] = ({ canvas }) => {
-        raylibJs = new RaylibJs(canvas, {
-            updateTitle: (title) => {
-                self.postMessage({
-                    type: RESPONSE_MESSAGE_TYPE.UPDATE_TITLE,
-                    title
-                })
-            },
-        })
+        if (raylibJs) {
+            raylibJs.stop()
+        }
+        raylibJs = new RaylibJs(canvas, platform)
     }
     handlers[REQUEST_MESSAGE_TYPE.START] = async ({ params }) => {
         try {
@@ -315,7 +319,7 @@ export class RaylibJsWorker {
             }
         }
         case RESPONSE_MESSAGE_TYPE.UPDATE_TITLE: {
-            window.document.title = event.data.title
+            this.platform.updateTitle(event.data.title)
             break
         }
         default:
@@ -323,8 +327,9 @@ export class RaylibJsWorker {
         }
     }
 
-    constructor(worker, canvas) {
+    constructor(worker, canvas, platform) {
         this.worker = worker
+        this.platform = platform
         this.startPromise = undefined
         this.onStartSuccess = undefined
         this.onStartFail = undefined
@@ -360,6 +365,7 @@ export class RaylibJsWorker {
         this.worker.postMessage({
             type: REQUEST_MESSAGE_TYPE.STOP
         })
+        this.worker.removeEventListener("message", this.handleMessage)
     }
 
     handleKeyDown(keyCode) {

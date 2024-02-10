@@ -11,7 +11,7 @@
             border: 1px solid black
         }
 
-        #raylib-example-select {
+        .raylib-select {
             display: block;
             max-width: 8rem;
         }
@@ -37,38 +37,19 @@
 </head>
 <body>
     <label for="raylib-example-select">Choose an Example:</label>
-        <select id="raylib-example-select" onchange="startRaylib(this.value)">
+    <select id="raylib-example-select" class="raylib-select" onchange="run()">
         <!-- This is populated by js -->
-        </select>
+    </select>
+    <label for="raylib-env-select">Execution context:</label>
+    <select id="raylib-env-select" class="raylib-select" onchange="run()">
+        <option value="main">main thread</option>
+        <option value="worker">worker thread</option>
+    </select>
+    <canvas id="game"></canvas>
     <script type="module">
         import { RaylibJs, RaylibJsWorker, glfwKeyMapping } from "./raylib.js"
-        // TODO: store the current example in the URL
-        const wasmPaths = {
-            "tsoding": ["game",],
-            "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel",],
-            "shapes": ["shapes_colors_palette"]
-        }
 
-        const raylibExampleSelect = document.getElementById("raylib-example-select");
-        const canvas = document.getElementById("game");
-
-        for (const exampleCategory in wasmPaths){
-            raylibExampleSelect.innerHTML += `<optgroup label="${exampleCategory}">`
-            for (const example of wasmPaths[exampleCategory]){
-                raylibExampleSelect.innerHTML += `<option>${example}</option>`
-            }
-            raylibExampleSelect.innerHTML += "</optgroup>"
-        }
-
-        const { protocol } = window.location;
-        const isHosted = protocol !== "file:";
-        let removeEventListeners = undefined
-        const worker = new Worker("raylib.worker.js", {
-            type: "module",
-        });
-        const raylibJs = new RaylibJsWorker(worker, canvas);
-
-        function addEventListeners(raylibJs) {
+        function addEventListeners (raylibJs, canvas) {
             const keyDown = (e) => {
                 raylibJs.handleKeyDown(glfwKeyMapping[e.code]);
             };
@@ -85,7 +66,7 @@
                     y: e.clientY - rect.top,
                 });
             };
-            
+
             window.addEventListener("keydown", keyDown);
             window.addEventListener("keyup", keyUp);
             window.addEventListener("wheel", wheelMove);
@@ -98,33 +79,86 @@
             }
         }
 
-        window.startRaylib = (selectedWasm) => {
-            if (isHosted) {
-                if (removeEventListeners !== undefined) {
-                    removeEventListeners();
-                    raylibJs.stop();
+        function makeRunner ({
+            exampleSelector,
+            envSelector,
+            worker,
+            canvas,
+        }) {
+            let raylibJs = undefined
+            let removeEventListeners = undefined
+            const factories = {
+                "main": ({ canvas, platform }) => new RaylibJs(canvas, platform),
+                "worker": ({ worker, canvas, platform }) => new RaylibJsWorker(worker, canvas, platform),
+            }
+            let oldCanvas = canvas
+            const platform = {
+                updateTitle (title) {
+                    document.title = title
                 }
-                removeEventListeners = addEventListeners(raylibJs);
+            }
+            return () => {
+                if (raylibJs) {
+                    raylibJs.stop()
+                    removeEventListeners()
+                }
+                const newCanvas = document.createElement("canvas")
+                newCanvas.id = oldCanvas.id
+                oldCanvas.replaceWith(newCanvas)
+                oldCanvas = newCanvas
+                raylibJs = factories[envSelector.value]({
+                    canvas: newCanvas,
+                    platform,
+                    worker,
+                })
+                removeEventListeners = addEventListeners(raylibJs, newCanvas)
                 raylibJs.start({
-                    wasmPath: `wasm/${selectedWasm}.wasm`,
-                });
-            } else {
-                window.addEventListener("load", () => {
-                    document.body.innerHTML = `
-                        <div class="not-hosted-msg">
-                            <div class="important">
-                                <p>Unfortunately, due to CORs restrictions, the wasm assembly cannot be fetched.</p>
-                                <p>Please navigate to this location using a web server.</p>
-                                <p>If you have Python 3 on your system you can just do:</p>
-                            </div>
-                            <code>$ python3 -m http.server 6969</code>
-                        </div>
-                        `;
-                });
+                    wasmPath: `wasm/${exampleSelector.value}.wasm`,
+                })
             }
         }
 
-        startRaylib("game");
+        // TODO: store the current example in the URL
+        const wasmPaths = {
+            "tsoding": ["game",],
+            "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel",],
+            "shapes": ["shapes_colors_palette"]
+        }
+
+        const raylibExampleSelect = document.getElementById("raylib-example-select");
+
+        for (const exampleCategory in wasmPaths) {
+            raylibExampleSelect.innerHTML += `<optgroup label="${exampleCategory}">`
+            for (const example of wasmPaths[exampleCategory]) {
+                raylibExampleSelect.innerHTML += `<option>${example}</option>`
+            }
+            raylibExampleSelect.innerHTML += "</optgroup>"
+        }
+        
+        window.run = makeRunner({
+            exampleSelector: raylibExampleSelect,
+            envSelector: document.getElementById("raylib-env-select"),
+            canvas: document.getElementById("game"),
+            worker: new Worker("raylib.worker.js", {
+                type: "module",
+            }),
+        })
+
+        const { protocol } = window.location;
+        const isHosted = protocol !== "file:";
+
+        window.addEventListener("load", isHosted ? window.run : () => {
+            document.body.innerHTML = `
+                <div class="not-hosted-msg">
+                    <div class="important">
+                        <p>Unfortunately, due to CORs restrictions, the wasm assembly cannot be fetched.</p>
+                        <p>Please navigate to this location using a web server.</p>
+                        <p>If you have Python 3 on your system you can just do:</p>
+                    </div>
+                    <code>$ python3 -m http.server 6969</code>
+                </div>
+                `;
+        })
     </script>
 </body>
 </html>
