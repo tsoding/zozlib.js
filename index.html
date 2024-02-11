@@ -2,21 +2,61 @@
 <html>
     <head>
         <title>Hello, Raylib!</title>
-
-        <script src="https://cdn.tailwindcss.com"></script>
         <style>
-            /* #game { */
-            /*     position: absolute; */
-            /*     top: 50%; */
-            /*     left: 50%; */
-            /*     transform: translate(-50%, -50%); */
-            /*     border: 1px solid black; */
-            /* } */
-            /**/
-            /* #raylib-example-select { */
-            /*     display: block; */
-            /*     max-width: 8rem; */
-            /* } */
+            * {
+                margin: 0;
+            }
+
+            /* w-full flex flex-col items-center justify-center p-8 gap-12 lg:gap-4 */
+            .main-container {
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+
+                padding-top: 1.5rem;
+                padding-bottom: 1.5rem;
+                gap: 3rem;
+                @media (min-width: 1024px) {
+                    gap: 1rem;
+                }
+            }
+
+            /* flex flex-col gap-4 lg:gap-2 */
+            .example-container {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                @media (min-width: 1024px) {
+                    gap: 0.5rem;
+                }
+
+                #game {
+                    display: block;
+                    vertical-align: middle;
+                    border: 1px solid black;
+                }
+            }
+
+            /* text-center max-w-fit */
+            #raylib-example-select {
+                text-align: center;
+                max-width: fit-content;
+            }
+
+            /* mx-auto max-w-3xl */
+            .epilogue {
+                margin-left: auto;
+                margin-right: auto;
+                max-width: 48rem;
+
+                line-height: 3rem;
+                @media (min-width: 1024px) {
+                    font-size: 1.25rem;
+                    line-height: 1.75rem;
+                }
+            }
 
             .not-hosted-msg {
                 text-align: center;
@@ -39,33 +79,29 @@
         <script src="raylib.js"></script>
     </head>
     <body>
-        <!-- <label for="raylib-example-select">Choose an Example:</label> -->
-        <!--     <select id="raylib-example-select" onchange="startRaylib(this.value)"> -->
-        <!-- This is populated by js -->
-
-        <!--     </select> -->
-        <!-- <canvas id="game"></canvas> -->
-        <div class="w-full flex flex-col items-center justify-center p-4 gap-2 md:p-6">
-            <h1 class="text-3xl font-bold tracking-tighter sm:text-4xl lg:text-5xl/none">Raylib.js</h1>
-            <div class="flex flex-col gap-2">
+        <div class="main-container">
+            <h1>Raylib.js</h1>
+            <div class="example-container">
                 <div>
                     <label for="raylib-example-select">Choose an Example:</label>
-                    <select
-                        class="border text-center w-36"
-                        id="raylib-example-select"
-                        onchange="startRaylib(this.value)">
-                        This is populated by js
+                    <select id="raylib-example-select" onchange="startRaylib(this.value)">
+                        <!-- This is populated by js -->
                     </select>
                 </div>
                 <canvas id="game"></canvas>
             </div>
 
-            <p class="mx-auto max-w-3xl text-gray-500 md:text-xl dark:text-gray-400">
-                The unofficial implementation of a subset of the Raylib API in JavaScript facilitates the usage of
-                Raylib functionalities via WebAssembly without the necessity of Emscripten, offering a simpler web-based
-                alternative for Raylib utilization. While not all functions are yet available, the partial
-                implementation still holds value for games or applications that solely rely on the supported features.
-                This is a Research Project intended to explore how far this approach can be pushed.
+            <p class="epilogue">
+                Raylib.js, An unofficial implementation of a subset of the
+                <a href="https://raylib.com" target="_blank">Raylib</a> API in JavaScript facilitates the usage of
+                Raylib functionalities via
+                <a href="https://surma.dev/things/c-to-webassembly/" target="_blank"
+                    >WebAssembly without the necessity of Emscripten</a
+                >, offering a simpler web-based alternative for Raylib utilization. While not all functions are yet
+                available, the partial implementation still holds value for games or applications that solely rely on
+                the supported features. This is a
+                <a href="https://github.com/tsoding/raylib.js" target="_blank">Research Project</a> intended to explore
+                how far this approach can be pushed.
             </p>
         </div>
 
