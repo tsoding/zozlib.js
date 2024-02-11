@@ -1,82 +1,109 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-<head>
-    <title>Hello, Raylib!</title>
-    <style>
-        #game {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            border: 1px solid black
-        }
+    <head>
+        <title>Hello, Raylib!</title>
 
-        #raylib-example-select {
-            display: block;
-            max-width: 8rem;
-        }
+        <script src="https://cdn.tailwindcss.com"></script>
+        <style>
+            /* #game { */
+            /*     position: absolute; */
+            /*     top: 50%; */
+            /*     left: 50%; */
+            /*     transform: translate(-50%, -50%); */
+            /*     border: 1px solid black; */
+            /* } */
+            /**/
+            /* #raylib-example-select { */
+            /*     display: block; */
+            /*     max-width: 8rem; */
+            /* } */
 
-        .not-hosted-msg {
-            text-align: center;
-            position: absolute;
+            .not-hosted-msg {
+                text-align: center;
+                position: absolute;
 
-            top: 50%;
-            left: 50%;
+                top: 50%;
+                left: 50%;
 
-            transform: translate(-50%, -50%);
-        }
-
-        .not-hosted-msg .important {
-            font-weight: bold;
-        }
-        @font-face {
-            font-family: grixel;
-            src: url(fonts/acme_7_wide_xtnd.woff);
-        }
-    </style>
-    <script src="raylib.js"></script>
-</head>
-<body>
-    <label for="raylib-example-select">Choose an Example:</label>
-        <select id="raylib-example-select" onchange="startRaylib(this.value)">
-        <!-- This is populated by js -->
-        </select>
-    <canvas id="game"></canvas>
-    <script>
-        // TODO: store the current example in the URL
-        const wasmPaths = {
-            "tsoding": ["game",],
-            "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel",],
-            "shapes": ["shapes_colors_palette"]
-        }
-
-        const raylibExampleSelect = document.getElementById("raylib-example-select");
-
-        for (const exampleCategory in wasmPaths){
-            raylibExampleSelect.innerHTML += `<optgroup label="${exampleCategory}">`
-            for (const example of wasmPaths[exampleCategory]){
-                raylibExampleSelect.innerHTML += `<option>${example}</option>`
+                transform: translate(-50%, -50%);
             }
-            raylibExampleSelect.innerHTML += "</optgroup>"
-        }
 
-        const { protocol } = window.location;
-        const isHosted = protocol !== "file:";
-        let raylibJs = undefined;
+            .not-hosted-msg .important {
+                font-weight: bold;
+            }
+            @font-face {
+                font-family: grixel;
+                src: url(fonts/acme_7_wide_xtnd.woff);
+            }
+        </style>
+        <script src="raylib.js"></script>
+    </head>
+    <body>
+        <!-- <label for="raylib-example-select">Choose an Example:</label> -->
+        <!--     <select id="raylib-example-select" onchange="startRaylib(this.value)"> -->
+        <!-- This is populated by js -->
 
-        function startRaylib(selectedWasm){
-            if (isHosted) {
-                if (raylibJs !== undefined) {
-                    raylibJs.stop();
+        <!--     </select> -->
+        <!-- <canvas id="game"></canvas> -->
+        <div class="w-full flex flex-col items-center justify-center p-4 gap-2 md:p-6">
+            <h1 class="text-3xl font-bold tracking-tighter sm:text-4xl lg:text-5xl/none">Raylib.js</h1>
+            <div class="flex flex-col gap-2">
+                <div>
+                    <label for="raylib-example-select">Choose an Example:</label>
+                    <select
+                        class="border text-center w-36"
+                        id="raylib-example-select"
+                        onchange="startRaylib(this.value)">
+                        This is populated by js
+                    </select>
+                </div>
+                <canvas id="game"></canvas>
+            </div>
+
+            <p class="mx-auto max-w-3xl text-gray-500 md:text-xl dark:text-gray-400">
+                The unofficial implementation of a subset of the Raylib API in JavaScript facilitates the usage of
+                Raylib functionalities via WebAssembly without the necessity of Emscripten, offering a simpler web-based
+                alternative for Raylib utilization. While not all functions are yet available, the partial
+                implementation still holds value for games or applications that solely rely on the supported features.
+                This is a Research Project intended to explore how far this approach can be pushed.
+            </p>
+        </div>
+
+        <script>
+            // TODO: store the current example in the URL
+            const wasmPaths = {
+                tsoding: ["game"],
+                core: ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel"],
+                shapes: ["shapes_colors_palette"],
+            };
+
+            const raylibExampleSelect = document.getElementById("raylib-example-select");
+
+            for (const exampleCategory in wasmPaths) {
+                raylibExampleSelect.innerHTML += `<optgroup label="${exampleCategory}">`;
+                for (const example of wasmPaths[exampleCategory]) {
+                    raylibExampleSelect.innerHTML += `<option>${example}</option>`;
                 }
-                raylibJs = new RaylibJs();
-                raylibJs.start({
-                    wasmPath: `wasm/${selectedWasm}.wasm`,
-                    canvasId: "game",
-                });
-            } else {
-                window.addEventListener("load", () => {
-                    document.body.innerHTML = `
+                raylibExampleSelect.innerHTML += "</optgroup>";
+            }
+
+            const { protocol } = window.location;
+            const isHosted = protocol !== "file:";
+            let raylibJs = undefined;
+
+            function startRaylib(selectedWasm) {
+                if (isHosted) {
+                    if (raylibJs !== undefined) {
+                        raylibJs.stop();
+                    }
+                    raylibJs = new RaylibJs();
+                    raylibJs.start({
+                        wasmPath: `wasm/${selectedWasm}.wasm`,
+                        canvasId: "game",
+                    });
+                } else {
+                    window.addEventListener("load", () => {
+                        document.body.innerHTML = `
                         <div class="not-hosted-msg">
                             <div class="important">
                                 <p>Unfortunately, due to CORs restrictions, the wasm assembly cannot be fetched.</p>
@@ -86,11 +113,11 @@
                             <code>$ python3 -m http.server 6969</code>
                         </div>
                         `;
-                });
+                    });
+                }
             }
-        }
 
-        startRaylib("game");
-    </script>
-</body>
+            startRaylib("game");
+        </script>
+    </body>
 </html>
