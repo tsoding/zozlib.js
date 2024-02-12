@@ -118,9 +118,7 @@ export default class RaylibJs {
     }
 
     async WindowShouldClose() {
-        console.log("before frame");
         let timestamp = await nextFrame();
-        console.log("after frame");
         if (this.previous === undefined) {
             this.previous = timestamp;
             timestamp = await nextFrame();
@@ -260,6 +258,20 @@ export default class RaylibJs {
         fontSize *= this.#FONT_SCALE_MAGIC;
         this.ctx.font = `${fontSize}px grixel`;
         return this.ctx.measureText(text).width;
+    }
+
+    memcpy(dest_ptr, src_ptr, count) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        // TODO: Why this does not fix asyncify problems
+        new Uint8Array(buffer, dest_ptr, count)
+          .set(new Uint8Array(buffer, src_ptr, count));
+        return dest_ptr;
+    }
+
+    memset(ptr, value, num) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        new Int32Array(buffer, ptr, num).fill(value);
+        return ptr;
     }
 }
 

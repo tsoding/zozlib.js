@@ -27,17 +27,17 @@ int main(void)
 
     InitWindow(screenWidth, screenHeight, "raylib [shapes] example - colors palette");
 
-    Color colors[MAX_COLORS_COUNT] = {
+    static Color colors[MAX_COLORS_COUNT] = {
         DARKGRAY, MAROON, ORANGE, DARKGREEN, DARKBLUE, DARKPURPLE, DARKBROWN,
         GRAY, RED, GOLD, LIME, BLUE, VIOLET, BROWN, LIGHTGRAY, PINK, YELLOW,
         GREEN, SKYBLUE, PURPLE, BEIGE };
 
-    const char *colorNames[MAX_COLORS_COUNT] = {
+    static const char *colorNames[MAX_COLORS_COUNT] = {
         "DARKGRAY", "MAROON", "ORANGE", "DARKGREEN", "DARKBLUE", "DARKPURPLE",
         "DARKBROWN", "GRAY", "RED", "GOLD", "LIME", "BLUE", "VIOLET", "BROWN",
         "LIGHTGRAY", "PINK", "YELLOW", "GREEN", "SKYBLUE", "PURPLE", "BEIGE" };
 
-    Rectangle colorsRecs[MAX_COLORS_COUNT] = { 0 };     // Rectangles array
+    static Rectangle colorsRecs[MAX_COLORS_COUNT] = { 0 };     // Rectangles array
 
     // Fills colorsRecs data (for every rectangle)
     for (int i = 0; i < MAX_COLORS_COUNT; i++)
