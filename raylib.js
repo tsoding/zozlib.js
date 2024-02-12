@@ -182,7 +182,7 @@ class RaylibJs {
         return false;
     }
     
-    TextFormat(text_ptr, args_ptr){ 
+    TextFormat(text_ptr, args_ptr) { 
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         const arg_arr = PRINTJ.args_ptr_to_array(text, args_ptr, buffer);
@@ -195,6 +195,14 @@ class RaylibJs {
         bytes[msg.length] = 0;
 
         return bytes;
+    }
+
+    TraceLog(logLevel, text_ptr, args_ptr) { 
+      const buffer = this.wasm.instance.exports.memory.buffer;
+      const text = cstr_by_ptr(buffer, text_ptr);
+      const arg_arr = PRINTJ.args_ptr_to_array(text, args_ptr, buffer);
+      const msg = PRINTJ.vsprintf(text, arg_arr);
+      console.log(msg)
     }
 
     GetMousePosition(result_ptr) {
