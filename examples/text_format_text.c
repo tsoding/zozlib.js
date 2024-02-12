@@ -26,7 +26,7 @@ void GameFrame()
     //----------------------------------------------------------------------------------
     // TODO: Update your variables here
     //----------------------------------------------------------------------------------
-    
+
     int inc_changed = 0;
 
     if (IsKeyDown(KEY_SPACE)){
@@ -34,6 +34,7 @@ void GameFrame()
         inc++;
     } 
     if (IsKeyDown(KEY_Q)) {
+        TraceLog(LOG_INFO, "raylib [%s] example - %s is shutting down...", "text", "text formatting");
         TraceLog(LOG_FATAL, "This is a fatal message: %d", inc);
     }
 
