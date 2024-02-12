@@ -10,6 +10,7 @@ clang -I./include/ -o build/core_input_keys ./examples/core_input_keys.c -L./lib
 clang -I./include/ -o build/shapes_colors_palette ./examples/shapes_colors_palette.c -L./lib/ -lraylib -lm
 clang -I./include/ -o build/game ./game.c -L./lib/ -lraylib -lm
 clang -I./include/ -o ./build/core_input_mouse_wheel ./examples/core_input_mouse_wheel.c -L./lib/ -lraylib -lm
+clang -I./include/ -o ./build/textures_logo_raylib ./examples/textures_logo_raylib.c -L./lib/ -lraylib -lm
 
 clang --target=wasm32 -I./include --no-standard-libraries -Wl,--export-table -Wl,--no-entry -Wl,--allow-undefined -Wl,--export=main -o wasm/core_basic_window.wasm ./examples/core_basic_window.c -DPLATFORM_WEB
 clang --target=wasm32 -I./include --no-standard-libraries -Wl,--export-table -Wl,--no-entry -Wl,--allow-undefined -Wl,--export=main -o wasm/core_basic_screen_manager.wasm ./examples/core_basic_screen_manager.c -DPLATFORM_WEB
@@ -17,6 +18,7 @@ clang --target=wasm32 -I./include --no-standard-libraries -Wl,--export-table -Wl
 clang --target=wasm32 -I./include --no-standard-libraries -Wl,--export-table -Wl,--no-entry -Wl,--allow-undefined -Wl,--export=main -o wasm/shapes_colors_palette.wasm ./examples/shapes_colors_palette.c -DPLATFORM_WEB
 clang --target=wasm32 -I./include --no-standard-libraries -Wl,--export-table -Wl,--no-entry -Wl,--allow-undefined -Wl,--export=main -o wasm/game.wasm game.c -DPLATFORM_WEB
 clang --target=wasm32 -I./include --no-standard-libraries -Wl,--export-table -Wl,--no-entry -Wl,--allow-undefined -Wl,--export=main -o wasm/core_input_mouse_wheel.wasm ./examples/core_input_mouse_wheel.c -DPLATFORM_WEB
+clang --target=wasm32 -I./include --no-standard-libraries -Wl,--export-table -Wl,--no-entry -Wl,--allow-undefined -Wl,--export=main -o wasm/textures_logo_raylib.wasm ./examples/textures_logo_raylib.c -DPLATFORM_WEB
 
 # Instrument all wasm files with Asyncify
-ls wasm | xargs -I{} wasm-opt --asyncify wasm/{} --pass-arg=asyncify-imports@env.WindowShouldClose -o wasm/{}
+ls wasm | xargs -I{} wasm-opt --asyncify wasm/{} --pass-arg=asyncify-imports@env.WindowShouldClose,env.LoadTexture -o wasm/{}

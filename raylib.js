@@ -48,8 +48,12 @@ export default class RaylibJs {
 
     #reset() {
         this.previous = undefined;
+        /** @type {{instance: WebAssembly.Instance, module: WebAssembly.Module}}  */
         this.wasm = undefined;
+        this.publicDir = undefined;
+        /** @type {CanvasRenderingContext2D} */
         this.ctx = undefined;
+        /** @type {CanvasRenderingContext2D} */
         this.dt = undefined;
         this.targetFPS = 60;
         this.prevPressedKeyState = new Set();
@@ -57,6 +61,11 @@ export default class RaylibJs {
         this.currentMouseWheelMoveState = 0;
         this.currentMousePosition = {x: 0, y: 0};
         this.quit = false;
+        // FIXME: Could theoretically be an array
+        /** @type {Map<number, HTMLImageElement>}*/
+        this.textures = new Map();
+        /** @type {Map<string, number>} */
+        this.textureIDs = new Map();
     }
 
     constructor() {
@@ -67,7 +76,7 @@ export default class RaylibJs {
         this.quit = true;
     }
 
-    async start({ wasmPath, canvasId }) {
+    async start({ wasmPath, canvasId, publicDir = "./" }) {
         if (this.wasm !== undefined) {
             console.error("The game is already running. Please stop() it first.");
             return;
@@ -75,9 +84,12 @@ export default class RaylibJs {
 
         const canvas = document.getElementById(canvasId);
         this.ctx = canvas.getContext("2d");
-        if (this.ctx === null) {
+        const bgCanvas = document.createElement("canvas");
+        this.btx =  bgCanvas.getContext("2d");
+        if (this.ctx === null || this.btx === null) {
             throw new Error("Could not create 2d canvas context");
         }
+        this.publicDir = publicDir;
         this.wasm = await Asyncify.instantiateStreaming(fetch(wasmPath), {
             env: make_environment(this)
         });
@@ -87,6 +99,8 @@ export default class RaylibJs {
     InitWindow(width, height, title_ptr) {
         this.ctx.canvas.width = width;
         this.ctx.canvas.height = height;
+        this.btx.canvas.width = width;
+        this.btx.canvas.height = height;
         const buffer = this.wasm.instance.exports.memory.buffer;
         document.title = cstr_by_ptr(buffer, title_ptr);
         
@@ -193,6 +207,32 @@ export default class RaylibJs {
         this.ctx.fillStyle = color;
         this.ctx.fillRect(posX, posY, width, height);
     }
+    
+    // RLAPI void DrawTexture(Texture2D texture, int posX, int posY, Color tint);                               // Draw a Texture2D
+    DrawTexture(texture_ptr, posX, posY, tint_ptr) {
+        /** @type {ArrayBuffer} */
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const tint = getColorFromMemory(buffer, tint_ptr);
+        const textureID = new Uint32Array(buffer, texture_ptr)[0];
+        const texture = this.textures.get(textureID);
+        // TODO: actually use width / height from the passed struct
+        const width = texture.width;
+        const height = texture.height;
+        if (texture === undefined) {
+            // TODO: Better error reporting
+            throw new Error(`textureID ${textureID} not found.`);
+        }
+        this.btx.clearRect(0, 0, width, height);
+        this.btx.drawImage(texture, 0, 0);
+        this.btx.fillStyle = tint;
+        this.btx.globalCompositeOperation = "multiply";
+        this.btx.fillRect(0, 0, width, height);
+        this.btx.globalCompositeOperation = "destination-in";
+        this.btx.drawImage(texture, 0, 0);
+        this.btx.globalCompositeOperation = "source-over";
+        this.ctx.drawImage(this.btx.canvas, 0, 0, width, height, posX, posY, width, height);
+        
+    }
 
     IsKeyPressed(key) {
         return !this.prevPressedKeyState.has(key) && this.currentPressedKeyState.has(key);
@@ -258,6 +298,71 @@ export default class RaylibJs {
         fontSize *= this.#FONT_SCALE_MAGIC;
         this.ctx.font = `${fontSize}px grixel`;
         return this.ctx.measureText(text).width;
+    }
+
+    LoadTexture(result_ptr, fileName_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const fileName = this.publicDir + cstr_by_ptr(buffer, fileName_ptr);
+        const result = new DataView(buffer, result_ptr);
+        if (this.textureIDs.has(fileName)) {
+            const img = this.textures.get(this.textureIDs.get(fileName));
+            this.#setTexture(result, img, fileName);
+            return;
+        }
+        const img = new Image();
+        // Wrap image loading in a promise
+        const promise = new Promise((resolve, reject) => {
+            function wrapResolve() {
+              img.removeEventListener("error", wrapReject);
+              resolve();
+            };
+            function wrapReject() {
+              img.removeEventListener("load", wrapResolve);
+              reject();
+            };
+            img.addEventListener("load", wrapResolve, { once: true });
+            img.addEventListener("error", wrapReject, { once: true });
+        });
+        img.src = fileName;
+        return promise.then(() => {
+            this.#setTexture(result, img, fileName);
+            console.log("Loaded texture", fileName);
+        }).catch((err) => {
+            // TODO: Proper image error handling
+            console.error(err);
+            throw err;
+        });
+    }
+
+    /**
+     * @param {DataView} buffer
+     * @param {HTMLImageElement} img
+     * @param {string} fileName
+     */
+    #setTexture(buffer, img, fileName) {
+        /*
+          // Texture, tex data stored in GPU memory (VRAM)
+          typedef struct Texture {
+              unsigned int id; // OpenGL texture id
+              int width;       // Texture base width
+              int height;      // Texture base height
+              int mipmaps;     // Mipmap levels, 1 by default
+              int format;      // Data format (PixelFormat type)
+          } Texture;
+         */
+        const id = this.textureIDs.size;
+        buffer.setUint32(0, id);
+        this.textures.set(id, img);
+        this.textureIDs.set(fileName, id);
+        const PIXELFORMAT_UNCOMPRESSED_R8G8B8A8 = 7;
+        new Int32Array(
+            buffer.buffer, buffer.byteOffset + 4, 4 * 4
+        ).set([
+            img.width,
+            img.height,
+            1,
+            PIXELFORMAT_UNCOMPRESSED_R8G8B8A8
+        ]);
     }
 
     memcpy(dest_ptr, src_ptr, count) {
