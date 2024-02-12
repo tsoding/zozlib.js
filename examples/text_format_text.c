@@ -26,8 +26,18 @@ void GameFrame()
     //----------------------------------------------------------------------------------
     // TODO: Update your variables here
     //----------------------------------------------------------------------------------
+    
+    int inc_changed = 0;
 
-    if (IsKeyDown(KEY_SPACE)) inc++;
+    if (IsKeyDown(KEY_SPACE)){
+        inc_changed = 1;
+        inc++;
+    } 
+    if (IsKeyDown(KEY_Q)) {
+        TraceLog(LOG_FATAL, "This is a fatal message: %d", inc);
+    }
+
+    SetTraceLogLevel(LOG_DEBUG);
 
     // Draw
     //----------------------------------------------------------------------------------
@@ -44,8 +54,13 @@ void GameFrame()
         DrawText(TextFormat("Elapsed Time: %02.02f ms", GetFrameTime()*1000), 200, 220, 20, BLACK);
         
         DrawText(TextFormat("Hold Space To Increment: 0x%02X", inc % 255), 200, 280, 20, DARKPURPLE);
+
+        DrawText(TextFormat("Press %c To Log Fatal and terminate the program", 'Q'), 200, 340, 20, RED);
         
-        TraceLog(LOG_ERROR, "This is very important message: %d", inc);
+        if(inc_changed){
+            TraceLog(LOG_TRACE, "This is an trace message and should not be printed");
+            TraceLog(LOG_DEBUG, "This is a debug message: %d", inc);
+        }
 
     EndDrawing();
     //----------------------------------------------------------------------------------

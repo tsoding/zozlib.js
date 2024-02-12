@@ -32,6 +32,7 @@ class RaylibJs {
         this.currentPressedKeyState = new Set();
         this.currentMouseWheelMoveState = 0;
         this.currentMousePosition = {x: 0, y: 0};
+        this.currentLogTypeLevel = TraceLogLevel.LOG_INFO;
         this.quit = false;
     }
 
@@ -198,11 +199,27 @@ class RaylibJs {
     }
 
     TraceLog(logLevel, text_ptr, args_ptr) { 
+      if (logLevel < this.currentLogTypeLevel) return;
+
       const buffer = this.wasm.instance.exports.memory.buffer;
       const text = cstr_by_ptr(buffer, text_ptr);
       const arg_arr = PRINTJ.args_ptr_to_array(text, args_ptr, buffer);
       const msg = PRINTJ.vsprintf(text, arg_arr);
-      console.log(msg)
+
+      switch (logLevel)
+      {
+          case TraceLogLevel.LOG_TRACE:   console.log("TRACE: " + msg);  break;
+          case TraceLogLevel.LOG_DEBUG:   console.log("DEBUG: " + msg);  break;
+          case TraceLogLevel.LOG_INFO:    console.log("INFO: " + msg);  break;
+          case TraceLogLevel.LOG_WARNING: console.warn("WARNING: " + msg);  break;
+          case TraceLogLevel.LOG_ERROR:   console.error("ERROR: " + msg);  break;
+          case TraceLogLevel.LOG_FATAL:   throw new Error("FATAL: " + msg);
+          default: break;
+      }
+    }
+
+    SetTraceLogLevel(logLevel){
+      this.currentLogTypeLevel = logLevel;
     }
 
     GetMousePosition(result_ptr) {
@@ -381,6 +398,17 @@ const glfwKeyMapping = {
     "ContextMenu":    348,
     //  GLFW_KEY_LAST   GLFW_KEY_MENU
 }
+
+const TraceLogLevel = {
+    LOG_ALL:     0, // Display all logs
+    LOG_TRACE:   1, // Trace logging, intended for internal use only
+    LOG_DEBUG:   2, // Debug logging, used for internal debugging, it should be disabled on release builds
+    LOG_INFO:    3, // Info logging, used for program execution info
+    LOG_WARNING: 4, // Warning logging, used on recoverable failures
+    LOG_ERROR:   5, // Error logging, used on unrecoverable failures
+    LOG_FATAL:   6, // Fatal logging, used to abort program: exit(EXIT_FAILURE)
+    LOG_NONE:    7, // Disable logging
+} ;
 
 function cstrlen(mem, ptr) {
     let len = 0;
