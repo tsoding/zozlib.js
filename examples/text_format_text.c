@@ -45,6 +45,8 @@ void GameFrame()
         
         DrawText(TextFormat("Hold Space To Increment: 0x%02X", inc % 255), 200, 280, 20, DARKPURPLE);
         
+        TraceLog(LOG_ERROR, "This is very important message: %d", inc);
+
     EndDrawing();
     //----------------------------------------------------------------------------------
 }
