@@ -7,8 +7,6 @@
 static Vector2 ball_position = {0};
 static Vector2 ball_velocity = {200, 200};
 
-void raylib_js_set_entry(void (*entry)(void));
-
 void GameFrame()
 {
     BeginDrawing();
@@ -41,13 +39,9 @@ int main()
     ball_position.x = w/2;
     ball_position.y = h/2;
 
-#ifdef PLATFORM_WEB
-    raylib_js_set_entry(GameFrame);
-#else
     while (!WindowShouldClose()) {
         GameFrame();
     }
     CloseWindow();
-#endif
     return 0;
 }

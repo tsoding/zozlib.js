@@ -12,66 +12,8 @@
 ********************************************************************************************/
 
 #include "raylib.h"
+
 #define MAX_COLORS_COUNT    21          // Number of colors available
-
-void raylib_js_set_entry(void (*entry)(void));
-
-Color colors[MAX_COLORS_COUNT] = {
-    DARKGRAY, MAROON, ORANGE, DARKGREEN, DARKBLUE, DARKPURPLE, DARKBROWN,
-    GRAY, RED, GOLD, LIME, BLUE, VIOLET, BROWN, LIGHTGRAY, PINK, YELLOW,
-    GREEN, SKYBLUE, PURPLE, BEIGE };
-
-const char *colorNames[MAX_COLORS_COUNT] = {
-    "DARKGRAY", "MAROON", "ORANGE", "DARKGREEN", "DARKBLUE", "DARKPURPLE",
-    "DARKBROWN", "GRAY", "RED", "GOLD", "LIME", "BLUE", "VIOLET", "BROWN",
-    "LIGHTGRAY", "PINK", "YELLOW", "GREEN", "SKYBLUE", "PURPLE", "BEIGE" };
-
-Rectangle colorsRecs[MAX_COLORS_COUNT] = { 0 };     // Rectangles array
-
-int colorState[MAX_COLORS_COUNT] = { 0 };           // Color state: 0-DEFAULT, 1-MOUSE_HOVER
-
-Vector2 mousePoint = { 0.0f, 0.0f };
-
-
-void GameFrame()
-{
-    // Update
-    //----------------------------------------------------------------------------------
-    mousePoint = GetMousePosition();
-
-    for (int i = 0; i < MAX_COLORS_COUNT; i++)
-    {
-        if (CheckCollisionPointRec(mousePoint, colorsRecs[i])) colorState[i] = 1;
-        else colorState[i] = 0;
-    }
-    //----------------------------------------------------------------------------------
-
-    // Draw
-    //----------------------------------------------------------------------------------
-    BeginDrawing();
-
-        ClearBackground(RAYWHITE);
-
-        DrawText("raylib colors palette", 28, 42, 20, BLACK);
-        DrawText("press SPACE to see all colors", GetScreenWidth() - 180, GetScreenHeight() - 40, 10, GRAY);
-
-        for (int i = 0; i < MAX_COLORS_COUNT; i++)    // Draw all rectangles
-        {
-            DrawRectangleRec(colorsRecs[i], Fade(colors[i], colorState[i]? 0.6f : 1.0f));
-
-            if (IsKeyDown(KEY_SPACE) || colorState[i])
-            {
-                DrawRectangle((int)colorsRecs[i].x, (int)(colorsRecs[i].y + colorsRecs[i].height - 26), (int)colorsRecs[i].width, 20, BLACK);
-                DrawRectangleLinesEx(colorsRecs[i], 6, Fade(BLACK, 0.3f));
-                DrawText(colorNames[i], (int)(colorsRecs[i].x + colorsRecs[i].width - MeasureText(colorNames[i], 10) - 12),
-                    (int)(colorsRecs[i].y + colorsRecs[i].height - 20), 10, colors[i]);
-            }
-        }
-
-    EndDrawing();
-    //----------------------------------------------------------------------------------
-}
-
 
 //------------------------------------------------------------------------------------
 // Program main entry point
@@ -85,6 +27,17 @@ int main(void)
 
     InitWindow(screenWidth, screenHeight, "raylib [shapes] example - colors palette");
 
+    Color colors[MAX_COLORS_COUNT] = {
+        DARKGRAY, MAROON, ORANGE, DARKGREEN, DARKBLUE, DARKPURPLE, DARKBROWN,
+        GRAY, RED, GOLD, LIME, BLUE, VIOLET, BROWN, LIGHTGRAY, PINK, YELLOW,
+        GREEN, SKYBLUE, PURPLE, BEIGE };
+
+    const char *colorNames[MAX_COLORS_COUNT] = {
+        "DARKGRAY", "MAROON", "ORANGE", "DARKGREEN", "DARKBLUE", "DARKPURPLE",
+        "DARKBROWN", "GRAY", "RED", "GOLD", "LIME", "BLUE", "VIOLET", "BROWN",
+        "LIGHTGRAY", "PINK", "YELLOW", "GREEN", "SKYBLUE", "PURPLE", "BEIGE" };
+
+    Rectangle colorsRecs[MAX_COLORS_COUNT] = { 0 };     // Rectangles array
 
     // Fills colorsRecs data (for every rectangle)
     for (int i = 0; i < MAX_COLORS_COUNT; i++)
@@ -95,23 +48,57 @@ int main(void)
         colorsRecs[i].height = 100.0f;
     }
 
+    int colorState[MAX_COLORS_COUNT] = { 0 };           // Color state: 0-DEFAULT, 1-MOUSE_HOVER
 
+    Vector2 mousePoint = { 0.0f, 0.0f };
 
     SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------
 
-#ifdef PLATFORM_WEB
-    raylib_js_set_entry(GameFrame);
-#else
     // Main game loop
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
-        GameFrame();
+        // Update
+        //----------------------------------------------------------------------------------
+        mousePoint = GetMousePosition();
+
+        for (int i = 0; i < MAX_COLORS_COUNT; i++)
+        {
+            if (CheckCollisionPointRec(mousePoint, colorsRecs[i])) colorState[i] = 1;
+            else colorState[i] = 0;
+        }
+        //----------------------------------------------------------------------------------
+
+        // Draw
+        //----------------------------------------------------------------------------------
+        BeginDrawing();
+
+            ClearBackground(RAYWHITE);
+
+            DrawText("raylib colors palette", 28, 42, 20, BLACK);
+            DrawText("press SPACE to see all colors", GetScreenWidth() - 180, GetScreenHeight() - 40, 10, GRAY);
+
+            for (int i = 0; i < MAX_COLORS_COUNT; i++)    // Draw all rectangles
+            {
+                DrawRectangleRec(colorsRecs[i], Fade(colors[i], colorState[i]? 0.6f : 1.0f));
+
+                if (IsKeyDown(KEY_SPACE) || colorState[i])
+                {
+                    DrawRectangle((int)colorsRecs[i].x, (int)(colorsRecs[i].y + colorsRecs[i].height - 26), (int)colorsRecs[i].width, 20, BLACK);
+                    DrawRectangleLinesEx(colorsRecs[i], 6, Fade(BLACK, 0.3f));
+                    DrawText(colorNames[i], (int)(colorsRecs[i].x + colorsRecs[i].width - MeasureText(colorNames[i], 10) - 12),
+                        (int)(colorsRecs[i].y + colorsRecs[i].height - 20), 10, colors[i]);
+                }
+            }
+
+        EndDrawing();
+        //----------------------------------------------------------------------------------
     }
+
     // De-Initialization
     //--------------------------------------------------------------------------------------
     CloseWindow();                // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
-#endif
+
     return 0;
 }

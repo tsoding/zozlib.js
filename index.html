@@ -34,15 +34,15 @@
             src: url(fonts/acme_7_wide_xtnd.woff);
         }
     </style>
-    <script src="raylib.js"></script>
 </head>
 <body>
     <label for="raylib-example-select">Choose an Example:</label>
-        <select id="raylib-example-select" onchange="startRaylib(this.value)">
+        <select id="raylib-example-select">
         <!-- This is populated by js -->
         </select>
     <canvas id="game"></canvas>
-    <script>
+    <script type="module">
+        import RaylibJs from "./raylib.js";
         // TODO: store the current example in the URL
         const wasmPaths = {
             "tsoding": ["game",],
@@ -51,6 +51,9 @@
         }
 
         const raylibExampleSelect = document.getElementById("raylib-example-select");
+        raylibExampleSelect.addEventListener("change", (event) => {
+            startRaylib(event.currentTarget.value);
+        });
 
         for (const exampleCategory in wasmPaths){
             raylibExampleSelect.innerHTML += `<optgroup label="${exampleCategory}">`

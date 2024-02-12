@@ -17,3 +17,6 @@ clang --target=wasm32 -I./include --no-standard-libraries -Wl,--export-table -Wl
 clang --target=wasm32 -I./include --no-standard-libraries -Wl,--export-table -Wl,--no-entry -Wl,--allow-undefined -Wl,--export=main -o wasm/shapes_colors_palette.wasm ./examples/shapes_colors_palette.c -DPLATFORM_WEB
 clang --target=wasm32 -I./include --no-standard-libraries -Wl,--export-table -Wl,--no-entry -Wl,--allow-undefined -Wl,--export=main -o wasm/game.wasm game.c -DPLATFORM_WEB
 clang --target=wasm32 -I./include --no-standard-libraries -Wl,--export-table -Wl,--no-entry -Wl,--allow-undefined -Wl,--export=main -o wasm/core_input_mouse_wheel.wasm ./examples/core_input_mouse_wheel.c -DPLATFORM_WEB
+
+# Instrument all wasm files with Asyncify
+ls wasm | xargs -I{} wasm-opt --asyncify wasm/{} -o wasm/{}

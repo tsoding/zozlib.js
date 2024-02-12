@@ -23,19 +23,6 @@
 
 #include "raylib.h"
 
-void raylib_js_set_entry(void (*entry)(void));
-
-void GameFrame(void)
-{
-    BeginDrawing();
-
-        ClearBackground(RAYWHITE);
-
-        DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY);
-
-    EndDrawing();
-}
-
 //------------------------------------------------------------------------------------
 // Program main entry point
 //------------------------------------------------------------------------------------
@@ -51,9 +38,6 @@ int main(void)
     SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
     //--------------------------------------------------------------------------------------
 
-#ifdef PLATFORM_WEB
-    raylib_js_set_entry(GameFrame);
-#else
     // Main game loop
     while (!WindowShouldClose())    // Detect window close button or ESC key
     {
@@ -64,7 +48,13 @@ int main(void)
 
         // Draw
         //----------------------------------------------------------------------------------
-        GameFrame();
+        BeginDrawing();
+
+            ClearBackground(RAYWHITE);
+
+            DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY);
+
+        EndDrawing();
         //----------------------------------------------------------------------------------
     }
 
@@ -72,7 +62,6 @@ int main(void)
     //--------------------------------------------------------------------------------------
     CloseWindow();        // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
-#endif
 
     return 0;
 }

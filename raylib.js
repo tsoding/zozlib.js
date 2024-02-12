@@ -1,3 +1,5 @@
+import * as Asyncify from "https://unpkg.com/asyncify-wasm?module";
+
 function make_environment(env) {
     return new Proxy(env, {
         get(target, prop, receiver) {
@@ -11,7 +13,16 @@ function make_environment(env) {
     });
 }
 
-class RaylibJs {
+/**
+ * Promise version of {@link requestAnimationFrame}.
+ * @returns {Promise<DOMHighResTimeStamp>}
+ */
+function nextFrame() {
+  return new Promise(res => requestAnimationFrame(res));
+}
+
+
+export default class RaylibJs {
     // TODO: We stole the font from the website
     // (https://raylib.com/) and it's slightly different than
     // the one that is "baked" into Raylib library itself. To
@@ -20,6 +31,20 @@ class RaylibJs {
     //
     // It would be nice to have a better approach...
     #FONT_SCALE_MAGIC = 0.65;
+    
+    /**
+     * @typedef {(event: T) => void} EventHandler
+     * @template {Event} T
+     */
+
+    /** @type {EventHandler<KeyEvent> =} */
+    #keyDown;
+    /** @type {EventHandler<KeyEvent> =} */
+    #keyUp;
+    /** @type {EventHandler<WheelEvent> =} */
+    #wheelMove;
+    /** @type {EventHandler<MouseEvent> =} */
+    #mouseMove;
 
     #reset() {
         this.previous = undefined;
@@ -27,7 +52,6 @@ class RaylibJs {
         this.ctx = undefined;
         this.dt = undefined;
         this.targetFPS = 60;
-        this.entryFunction = undefined;
         this.prevPressedKeyState = new Set();
         this.currentPressedKeyState = new Set();
         this.currentMouseWheelMoveState = 0;
@@ -54,45 +78,10 @@ class RaylibJs {
         if (this.ctx === null) {
             throw new Error("Could not create 2d canvas context");
         }
-
-        this.wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
+        this.wasm = await Asyncify.instantiateStreaming(fetch(wasmPath), {
             env: make_environment(this)
         });
-
-        const keyDown = (e) => {
-            this.currentPressedKeyState.add(glfwKeyMapping[e.code]);
-        };
-        const keyUp = (e) => {
-            this.currentPressedKeyState.delete(glfwKeyMapping[e.code]);
-        };
-        const wheelMove = (e) => {
-          this.currentMouseWheelMoveState = Math.sign(-e.deltaY);
-        };
-        const mouseMove = (e) => {
-            this.currentMousePosition = {x: e.clientX, y: e.clientY};
-        };
-        window.addEventListener("keydown", keyDown);
-        window.addEventListener("keyup", keyUp);
-        window.addEventListener("wheel", wheelMove);
-        window.addEventListener("mousemove", mouseMove);
-
         this.wasm.instance.exports.main();
-        const next = (timestamp) => {
-            if (this.quit) {
-                this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-                window.removeEventListener("keydown", keyDown);
-                this.#reset()
-                return;
-            }
-            this.dt = (timestamp - this.previous)/1000.0;
-            this.previous = timestamp;
-            this.entryFunction();
-            window.requestAnimationFrame(next);
-        };
-        window.requestAnimationFrame((timestamp) => {
-            this.previous = timestamp;
-            window.requestAnimationFrame(next);
-        });
     }
 
     InitWindow(width, height, title_ptr) {
@@ -100,9 +89,47 @@ class RaylibJs {
         this.ctx.canvas.height = height;
         const buffer = this.wasm.instance.exports.memory.buffer;
         document.title = cstr_by_ptr(buffer, title_ptr);
+        
+        this.#keyDown = (e) => {
+            this.currentPressedKeyState.add(glfwKeyMapping[e.code]);
+        };
+        this.#keyUp = (e) => {
+            this.currentPressedKeyState.delete(glfwKeyMapping[e.code]);
+        };
+        this.#wheelMove = (e) => {
+          this.currentMouseWheelMoveState = Math.sign(-e.deltaY);
+        };
+        this.#mouseMove = (e) => {
+            this.currentMousePosition = {x: e.clientX, y: e.clientY};
+        };
+        window.addEventListener("keydown", this.#keyDown);
+        window.addEventListener("keyup", this.#keyUp);
+        window.addEventListener("wheel", this.#wheelMove);
+        window.addEventListener("mousemove", this.#mouseMove);
+    }
+    
+    CloseWindow() {
+        this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+        window.removeEventListener("keydown", this.#keyDown);
+        window.removeEventListener("keyup", this.#keyUp);
+        window.removeEventListener("wheel", this.#wheelMove);
+        window.removeEventListener("mousemove", this.#mouseMove);
+        this.#reset();
     }
 
-    WindowShouldClose(){
+    async WindowShouldClose() {
+        console.log("before frame");
+        let timestamp = await nextFrame();
+        console.log("after frame");
+        if (this.previous === undefined) {
+            this.previous = timestamp;
+            timestamp = await nextFrame();
+        }
+        if (this.quit) {
+            return true;
+        }
+        this.dt = (timestamp - this.previous)/1000.0;
+        this.previous = timestamp;
         return false;
     }
 
@@ -233,10 +260,6 @@ class RaylibJs {
         fontSize *= this.#FONT_SCALE_MAGIC;
         this.ctx.font = `${fontSize}px grixel`;
         return this.ctx.measureText(text).width;
-    }
-
-    raylib_js_set_entry(entry) {
-        this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);
     }
 }
 
