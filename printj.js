@@ -593,6 +593,71 @@ function sprintf() {
 	return doit(tokenize(arguments[0]), args);
 }
 
+function args_ptr_to_array(fmt, args_ptr, buffer) {
+    const tokens = tokenize(fmt);
+    var args = []
+    var args_offset = 0;
+
+    
+    for(var i=0;i<tokens.length;i++){
+		var token = tokens[i];
+        specifier = (token[0]).charCodeAt(0);
+        
+        switch(specifier) {
+            case /*S*/  83: throw Error("%S not implemented!");
+			case /*s*/ 115: 
+                const str_ptr = new DataView(buffer, args_ptr + args_offset, 4).getInt32(0, true)
+                args.push(cstr_by_ptr(buffer, str_ptr));
+                args_offset += 4;
+                break;
+			case /*C*/  67: throw Error("%C not implemented!");
+			case /*c*/  99: throw Error("%c not implemented!");
+			case /*D*/  68: throw Error("%D not implemented!");
+			case /*d*/ 100:
+			case /*i*/ 105: 
+                args.push(new DataView(buffer, args_ptr + args_offset, 4).getInt32(0, true));
+                args_offset += 4;
+                break;
+			case /*U*/  85: throw Error("%U not implemented!");
+			case /*u*/ 117: throw Error("%u not implemented!");
+			case /*O*/  79: throw Error("%O not implemented!");
+			case /*o*/ 111: throw Error("%o not implemented!");
+			case /*x*/ 120: throw Error("%x not implemented!");
+			case /*X*/  88: throw Error("%X not implemented!");
+			case /*B*/  66: throw Error("%B not implemented!");
+			case /*b*/  98: throw Error("%b not implemented!");
+			case /*F*/  70: throw Error("%F not implemented!");
+			case /*f*/ 102: 
+                args.push(new DataView(buffer, args_ptr + args_offset, 8).getFloat64(0, true));
+                args_offset += 8;
+                break;
+			case /*E*/  69: throw Error("%E not implemented!");
+			case /*e*/ 101: throw Error("%e not implemented!");
+			case /*G*/  71: throw Error("%G not implemented!");
+			case /*g*/ 103: throw Error("%g not implemented!");
+			case /*A*/  65: throw Error("%A not implemented!");
+			case /*a*/  97: throw Error("%a not implemented!");
+			case /*p*/ 112: throw Error("%p not implemented!");
+			case /*n*/ 110: throw Error("%n not implemented!");
+			case /*m*/ 109: throw Error("%m not implemented!");
+
+
+			/* JS-specific conversions (extension) */
+			case /*J*/  74: throw Error("%J not implemented!");
+			case /*V*/  86: throw Error("%V not implemented!");
+			case /*T*/  84: throw Error("%T not implemented!");
+			case /*Y*/  89: throw Error("%Y not implemented!");
+			case /*y*/ 121: throw Error("%y not implemented!");
+			case /*L*/ 76: break; // L is used to specify string literal part of format
+            default: 
+                throw Error("unknown specifer " + specifier + " not implemented!");
+		}
+    }
+
+    return args;
+}
+
+PRINTJ.args_ptr_to_array = args_ptr_to_array;
 PRINTJ.sprintf = sprintf;
 PRINTJ.vsprintf = vsprintf;
 PRINTJ._doit = doit;
