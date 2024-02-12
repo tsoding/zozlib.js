@@ -588,93 +588,11 @@ function doit(t, args) {
 function vsprintf(fmt, args) { return doit(tokenize(fmt), args); }
 
 function sprintf() {
-    var args = new Array(arguments.length - 1);
+	var args = new Array(arguments.length - 1);
 	for(var i = 0; i < args.length; ++i) args[i] = arguments[i+1];
 	return doit(tokenize(arguments[0]), args);
 }
 
-function round4(x){
-    return Math.ceil(x / 4) * 4;
-}
-
-function round8(x){
-  return Math.ceil(x / 8) * 8;
-}
-
-function args_ptr_to_array(fmt, args_ptr, buffer) {
-  const tokens = tokenize(fmt);
-  var args = []
-  var args_offset = 0;
-
-  for(var i=0;i<tokens.length;i++){
-      var token = tokens[i];
-      specifier = (token[0]).charCodeAt(0);
-      
-      switch(specifier) {
-          case /*S*/  83: throw Error("%S not implemented!");
-          case /*s*/ 115: 
-            args_offset = round4(args_offset);
-            const str_ptr = new DataView(buffer, args_ptr + args_offset, 4).getInt32(0, true)
-            args.push(cstr_by_ptr(buffer, str_ptr));
-            args_offset += 4;
-            break;
-          case /*C*/  67: throw Error("%C not implemented!");
-          case /*c*/  99: 
-            args.push(new DataView(buffer, args_ptr + args_offset, 4).getInt8(0, true));
-            args_offset += 1;
-            break;
-          case /*D*/  68: throw Error("%D not implemented!");
-          case /*d*/ 100:
-          case /*i*/ 105: 
-            args_offset = round4(args_offset);
-            args.push(new DataView(buffer, args_ptr + args_offset, 4).getInt32(0, true));
-            args_offset += 4;
-            break;
-          case /*U*/  85: throw Error("%U not implemented!");
-          case /*O*/  79: throw Error("%O not implemented!");
-          case /*u*/ 117: 
-          case /*o*/ 111: 
-          case /*x*/ 120:
-          case /*X*/  88: 
-            args_offset = round4(args_offset);
-            args.push(new DataView(buffer, args_ptr + args_offset, 4).getUint32(0, true));
-            args_offset += 4;
-            break;
-          case /*B*/  66: throw Error("%B not implemented!");
-          case /*b*/  98: throw Error("%b not implemented!");
-          case /*F*/  70:
-          case /*f*/ 102: 
-          case /*E*/  69:
-          case /*e*/ 101:
-            args_offset = round8(args_offset);
-            args.push(new DataView(buffer, args_ptr + args_offset, 8).getFloat64(0, true));
-            args_offset += 8;
-            break;
-          case /*G*/  71: throw Error("%G not implemented!");
-          case /*g*/ 103: throw Error("%g not implemented!");
-          case /*A*/  65: throw Error("%A not implemented!");
-          case /*a*/  97: throw Error("%a not implemented!");
-          case /*p*/ 112: throw Error("%p not implemented!");
-          case /*n*/ 110: throw Error("%n not implemented!");
-          case /*m*/ 109: throw Error("%m not implemented!");
-
-
-          /* JS-specific conversions (extension) */
-          case /*J*/  74: throw Error("%J not implemented!");
-          case /*V*/  86: throw Error("%V not implemented!");
-          case /*T*/  84: throw Error("%T not implemented!");
-          case /*Y*/  89: throw Error("%Y not implemented!");
-          case /*y*/ 121: throw Error("%y not implemented!");
-          case /*L*/ 76: break; // L is used to specify string literal part of format
-          default: 
-              throw Error("unknown specifer " + specifier + " not implemented!");
-      }
-    }
-
-  return args;
-}
-
-PRINTJ.args_ptr_to_array = args_ptr_to_array;
 PRINTJ.sprintf = sprintf;
 PRINTJ.vsprintf = vsprintf;
 PRINTJ._doit = doit;

@@ -56,7 +56,7 @@ void GameFrame()
         
         DrawText(TextFormat("Hold Space To Increment: 0x%02X", inc % 255), 200, 280, 20, DARKPURPLE);
 
-        DrawText(TextFormat("Press '%c' To Log Fatal and terminate the program", 'Q'), 200, 340, 20, RED);
+        DrawText(TextFormat("Press '%c' To Log Fatal and Terminate the Program", 'Q'), 200, 340, 20, RED);
         
         if(inc_changed){
             TraceLog(LOG_TRACE, "This is an trace message and should not be printed");

@@ -186,7 +186,7 @@ class RaylibJs {
     TextFormat(text_ptr, args_ptr) { 
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
-        const arg_arr = PRINTJ.args_ptr_to_array(text, args_ptr, buffer);
+        const arg_arr = args_ptr_to_array(text, args_ptr, buffer);
         const msg = PRINTJ.vsprintf(text, arg_arr);
         
         var bytes = new Uint8Array(buffer, 0, msg.length+1);
@@ -203,7 +203,7 @@ class RaylibJs {
 
       const buffer = this.wasm.instance.exports.memory.buffer;
       const text = cstr_by_ptr(buffer, text_ptr);
-      const arg_arr = PRINTJ.args_ptr_to_array(text, args_ptr, buffer);
+      const arg_arr = args_ptr_to_array(text, args_ptr, buffer);
       const msg = PRINTJ.vsprintf(text, arg_arr);
 
       switch (logLevel)
@@ -409,6 +409,87 @@ const TraceLogLevel = {
     LOG_FATAL:   6, // Fatal logging, used to abort program: exit(EXIT_FAILURE)
     LOG_NONE:    7, // Disable logging
 } ;
+
+function round4(x){
+    return Math.ceil(x / 4) * 4;
+}
+
+function round8(x){
+  return Math.ceil(x / 8) * 8;
+}
+
+function args_ptr_to_array(fmt, args_ptr, buffer) {
+  const tokens = PRINTJ._tokenize(fmt);
+  var args = []
+  var args_offset = 0;
+
+  for(var i=0;i<tokens.length;i++){
+      var token = tokens[i];
+      specifier = (token[0]).charCodeAt(0);
+      
+      switch(specifier) {
+          case /*S*/  83: throw Error("%S not implemented!");
+          case /*s*/ 115: 
+            args_offset = round4(args_offset);
+            const str_ptr = new DataView(buffer, args_ptr + args_offset, 4).getInt32(0, true)
+            args.push(cstr_by_ptr(buffer, str_ptr));
+            args_offset += 4;
+            break;
+          case /*C*/  67: throw Error("%C not implemented!");
+          case /*c*/  99: 
+            args.push(new DataView(buffer, args_ptr + args_offset, 4).getInt8(0, true));
+            args_offset += 1;
+            break;
+          case /*D*/  68: throw Error("%D not implemented!");
+          case /*d*/ 100:
+          case /*i*/ 105: 
+            args_offset = round4(args_offset);
+            args.push(new DataView(buffer, args_ptr + args_offset, 4).getInt32(0, true));
+            args_offset += 4;
+            break;
+          case /*U*/  85: throw Error("%U not implemented!");
+          case /*O*/  79: throw Error("%O not implemented!");
+          case /*u*/ 117: 
+          case /*o*/ 111: 
+          case /*x*/ 120:
+          case /*X*/  88: 
+            args_offset = round4(args_offset);
+            args.push(new DataView(buffer, args_ptr + args_offset, 4).getUint32(0, true));
+            args_offset += 4;
+            break;
+          case /*B*/  66: throw Error("%B not implemented!");
+          case /*b*/  98: throw Error("%b not implemented!");
+          case /*F*/  70:
+          case /*f*/ 102: 
+          case /*E*/  69:
+          case /*e*/ 101:
+            args_offset = round8(args_offset);
+            args.push(new DataView(buffer, args_ptr + args_offset, 8).getFloat64(0, true));
+            args_offset += 8;
+            break;
+          case /*G*/  71: throw Error("%G not implemented!");
+          case /*g*/ 103: throw Error("%g not implemented!");
+          case /*A*/  65: throw Error("%A not implemented!");
+          case /*a*/  97: throw Error("%a not implemented!");
+          case /*p*/ 112: throw Error("%p not implemented!");
+          case /*n*/ 110: throw Error("%n not implemented!");
+          case /*m*/ 109: throw Error("%m not implemented!");
+
+
+          /* JS-specific conversions (extension) */
+          case /*J*/  74: throw Error("%J not implemented!");
+          case /*V*/  86: throw Error("%V not implemented!");
+          case /*T*/  84: throw Error("%T not implemented!");
+          case /*Y*/  89: throw Error("%Y not implemented!");
+          case /*y*/ 121: throw Error("%y not implemented!");
+          case /*L*/ 76: break; // L is used to specify string literal part of format
+          default: 
+              throw Error("unknown specifer " + specifier + " not implemented!");
+      }
+    }
+
+  return args;
+}
 
 function cstrlen(mem, ptr) {
     let len = 0;
