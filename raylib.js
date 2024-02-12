@@ -168,7 +168,7 @@ class RaylibJs {
         this.ctx.fillStyle = color;
         this.ctx.fillRect(posX, posY, width, height);
     }
-
+    
     IsKeyPressed(key) {
         return !this.prevPressedKeyState.has(key) && this.currentPressedKeyState.has(key);
     }
@@ -176,15 +176,25 @@ class RaylibJs {
         return this.currentPressedKeyState.has(key);
     }
     GetMouseWheelMove() {
-      return this.currentMouseWheelMoveState;
+        return this.currentMouseWheelMoveState;
     }
     IsGestureDetected() {
         return false;
     }
+    
+    TextFormat(text_ptr, args_ptr){ 
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const text = cstr_by_ptr(buffer, text_ptr);
+        const arg_arr = PRINTJ.args_ptr_to_array(text, args_ptr, buffer);
+        const msg = PRINTJ.vsprintf(text, arg_arr);
+        
+        var bytes = new Uint8Array(buffer, 0, msg.length+1);
+        for(var i=0;i<msg.length;i++){
+            bytes[i] = msg.charCodeAt(i);
+        }
+        bytes[msg.length] = 0;
 
-    TextFormat(... args){ 
-        // TODO: Implement printf style formatting for TextFormat
-        return args[0];
+        return bytes;
     }
 
     GetMousePosition(result_ptr) {
