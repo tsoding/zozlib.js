@@ -25,8 +25,9 @@ int main(void)
 
     InitWindow(screenWidth, screenHeight, "raylib [core] example - mouse input");
 
-    Vector2 ballPosition = { -100.0f, -100.0f };
-    Color ballColor = DARKBLUE;
+    int boxPositionY = screenHeight / 2 - 40;
+    int scrollSpeed = 4;            // Scrolling speed in pixels
+    Vector2 ballPosition = { 0 };
 
     SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
     //---------------------------------------------------------------------------------------
@@ -36,15 +37,7 @@ int main(void)
     {
         // Update
         //----------------------------------------------------------------------------------
-        ballPosition = GetMousePosition();
-
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) ballColor = MAROON;
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_MIDDLE)) ballColor = LIME;
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) ballColor = DARKBLUE;
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_SIDE)) ballColor = PURPLE;
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_EXTRA)) ballColor = YELLOW;
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_FORWARD)) ballColor = ORANGE;
-        else if (IsMouseButtonPressed(MOUSE_BUTTON_BACK)) ballColor = BEIGE;
+        boxPositionY -= (GetMouseWheelMove()*scrollSpeed);
         //----------------------------------------------------------------------------------
 
         // Draw
@@ -53,9 +46,10 @@ int main(void)
 
             ClearBackground(RAYWHITE);
 
-            DrawCircleV(ballPosition, 40, ballColor);
+            DrawRectangle(screenWidth/2 - 40, boxPositionY, 80, 80, MAROON);
 
-            DrawText("move ball with mouse and click mouse button to change color", 10, 10, 20, DARKGRAY);
+            DrawText("Use mouse wheel to move the cube up and down!", 10, 10, 20, GRAY);
+            DrawText(TextFormat("Box position Y: %03i", boxPositionY), 10, 40, 20, LIGHTGRAY);
 
         EndDrawing();
         //----------------------------------------------------------------------------------
