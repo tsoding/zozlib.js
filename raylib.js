@@ -158,8 +158,11 @@ class RaylibJs {
         this.ctx.fillStyle = color;
         // TODO: since the default font is part of Raylib the css that defines it should be located in raylib.js and not in index.html
         this.ctx.font = `${fontSize}px grixel`;
-        this.ctx.fillText(text, posX, posY + fontSize);
-    }
+
+        const lines = text.split('\n');
+        for (var i = 0; i < lines.length; i++)
+            this.ctx.fillText(lines[i], posX, posY + (i * fontSize));
+        }
 
     // RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
     DrawRectangle(posX, posY, width, height, color_ptr) {
@@ -233,6 +236,20 @@ class RaylibJs {
         fontSize *= this.#FONT_SCALE_MAGIC;
         this.ctx.font = `${fontSize}px grixel`;
         return this.ctx.measureText(text).width;
+    }
+
+    TextSubtext(text_ptr, position, length) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const text = cstr_by_ptr(buffer, text_ptr);
+        const subtext = text.substring(position, length);
+
+        var bytes = new Uint8Array(buffer, 0, subtext.length+1);
+        for(var i = 0; i < subtext.length; i++){
+            bytes[i] = subtext.charCodeAt(i);
+        }
+        bytes[subtext.length] = 0;
+
+        return bytes;
     }
 
     raylib_js_set_entry(entry) {
