@@ -471,7 +471,11 @@ function args_ptr_to_array(fmt, args_ptr, buffer) {
           case /*g*/ 103: throw Error("%g not implemented!");
           case /*A*/  65: throw Error("%A not implemented!");
           case /*a*/  97: throw Error("%a not implemented!");
-          case /*p*/ 112: throw Error("%p not implemented!");
+          case /*p*/ 112: 
+            args_offset = round4(args_offset);
+            args.push(new DataView(buffer, args_ptr + args_offset, 4).getInt32(0, true));
+            args_offset += 4;
+            break;
           case /*n*/ 110: throw Error("%n not implemented!");
           case /*m*/ 109: throw Error("%m not implemented!");
 
