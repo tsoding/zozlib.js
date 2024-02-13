@@ -64,6 +64,8 @@ class RaylibJs {
             e.preventDefault();
         };
 
+        canvas.addEventListener("mousedown", gestureTap);
+
         const keyDown = (e) => {
             this.currentPressedKeyState.add(glfwKeyMapping[e.code]);
         };
@@ -77,14 +79,12 @@ class RaylibJs {
             this.currentMousePosition = {x: e.clientX, y: e.clientY};
         };
         const gestureTap = (e) => {
-            if (e.target.id === 'game')
-                this.currentGestureState = gestureMapping.GESTURE_TAP;
+	    this.currentGestureState = gestureMapping.GESTURE_TAP;
         };
         window.addEventListener("keydown", keyDown);
         window.addEventListener("keyup", keyUp);
         window.addEventListener("wheel", wheelMove);
         window.addEventListener("mousemove", mouseMove);
-        window.addEventListener("mousedown", gestureTap);
 
         this.wasm.instance.exports.main();
         const next = (timestamp) => {
