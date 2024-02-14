@@ -237,7 +237,7 @@ class RaylibJs {
     }
 
     // RLAPI Texture2D LoadTexture(const char *fileName);
-    async LoadTexture(result_ptr, filename_ptr) {
+    LoadTexture(result_ptr, filename_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const filename = cstr_by_ptr(buffer, filename_ptr);
 
@@ -261,9 +261,7 @@ class RaylibJs {
         const [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr, 5);
         // const tint = getColorFromMemory(buffer, color_ptr);
 
-        if(this.images[id]) {
-            this.ctx.drawImage(this.images[id], posX, posY);
-        }
+        this.ctx.drawImage(this.images[id], posX, posY);
     }
 
     raylib_js_set_entry(entry) {
