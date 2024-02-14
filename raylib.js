@@ -160,9 +160,10 @@ class RaylibJs {
         this.ctx.font = `${fontSize}px grixel`;
 
         const lines = text.split('\n');
-        for (var i = 0; i < lines.length; i++)
+        for (var i = 0; i < lines.length; i++) {
             this.ctx.fillText(lines[i], posX, posY + (i * fontSize));
         }
+    }
 
     // RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
     DrawRectangle(posX, posY, width, height, color_ptr) {
@@ -244,7 +245,7 @@ class RaylibJs {
         const subtext = text.substring(position, length);
 
         var bytes = new Uint8Array(buffer, 0, subtext.length+1);
-        for(var i = 0; i < subtext.length; i++){
+        for(var i = 0; i < subtext.length; i++) {
             bytes[i] = subtext.charCodeAt(i);
         }
         bytes[subtext.length] = 0;
