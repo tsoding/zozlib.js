@@ -59,13 +59,7 @@ class RaylibJs {
         this.wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
             env: make_environment(this)
         });
-
-        canvas.oncontextmenu = function(e) {
-            e.preventDefault();
-        };
-
-        canvas.addEventListener("mousedown", gestureTap);
-
+        
         const keyDown = (e) => {
             this.currentPressedKeyState.add(glfwKeyMapping[e.code]);
         };
@@ -73,18 +67,23 @@ class RaylibJs {
             this.currentPressedKeyState.delete(glfwKeyMapping[e.code]);
         };
         const wheelMove = (e) => {
-          this.currentMouseWheelMoveState = Math.sign(-e.deltaY);
+            this.currentMouseWheelMoveState = Math.sign(-e.deltaY);
         };
         const mouseMove = (e) => {
             this.currentMousePosition = {x: e.clientX, y: e.clientY};
         };
         const gestureTap = (e) => {
-	    this.currentGestureState = gestureMapping.GESTURE_TAP;
+            this.currentGestureState = gestureMapping.GESTURE_TAP;
         };
         window.addEventListener("keydown", keyDown);
         window.addEventListener("keyup", keyUp);
         window.addEventListener("wheel", wheelMove);
         window.addEventListener("mousemove", mouseMove);
+
+        canvas.addEventListener("mousedown", gestureTap);
+        canvas.oncontextmenu = function(e) {
+            e.preventDefault();
+        };
 
         this.wasm.instance.exports.main();
         const next = (timestamp) => {
