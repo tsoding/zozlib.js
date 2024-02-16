@@ -45,6 +45,7 @@ void GameFrame()
     BeginDrawing();
 
         ClearBackground(RAYWHITE);
+        DrawText(TextFormat("%.*s %.*d", 7, "Partially print", 25, 100), 200, 20, 20, BLACK);
 
         DrawText(TextFormat("Score: %08i", score), 200, 80, 20, RED);
 
