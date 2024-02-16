@@ -427,6 +427,15 @@ function args_ptr_to_array(fmt, args_ptr, buffer) {
       var token = tokens[i];
       specifier = (token[0]).charCodeAt(0);
       
+      
+      // extract additional integer value if * is present
+      var fmtwidth = token[5];
+      if(fmtwidth !== undefined && fmtwidth.length > 0 && fmtwidth.includes("*")){
+        args_offset = round4(args_offset);
+        args.push(new DataView(buffer, args_ptr + args_offset, 4).getInt32(0, true));
+        args_offset += 4;
+      }
+
       switch(specifier) {
           case /*S*/  83: throw Error("%S not implemented!");
           case /*s*/ 115: 
