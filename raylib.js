@@ -247,6 +247,7 @@ class RaylibJs {
         this.images.push(img);
 
         result[0] = this.images.indexOf(img);
+        // TODO: get the true width and height of the image
         result[1] = 256; // width
         result[2] = 256; // height
         result[3] = 1; // mipmaps
@@ -259,6 +260,7 @@ class RaylibJs {
     DrawTexture(texture_ptr, posX, posY, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr, 5);
+        // // TODO: implement tinting for DrawTexture
         // const tint = getColorFromMemory(buffer, color_ptr);
 
         this.ctx.drawImage(this.images[id], posX, posY);
