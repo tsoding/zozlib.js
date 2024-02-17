@@ -158,11 +158,14 @@
         }
 
         const wasmPaths = {
-            "tsoding": ["game",],
+            "tsoding": ["tsoding_ball", "tsoding_snake",],
             "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel",],
-            "shapes": ["shapes_colors_palette"]
+            "shapes": ["shapes_colors_palette"],
+            "text": ["text_writing_anim"],
+            "textures": ["textures_logo_raylib"],
         }
-        const defaultWasm = Object.values(wasmPaths)[0];
+        const defaultWasm = Object.values(wasmPaths)[0][0];
+
         const raylibExampleSelect = document.getElementById("raylib-example-select");
         for (const exampleCategory in wasmPaths) {
             raylibExampleSelect.innerHTML += `<optgroup label="${exampleCategory}">`
