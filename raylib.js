@@ -356,7 +356,7 @@ class RaylibJs {
         const text = cstr_by_ptr(buffer, text_ptr);
         let [posX, posY] = new Float32Array(buffer, position_ptr, 2);
         const tint = getColorFromMemory(buffer, tint_ptr);
-        [posX, posY] = this.applyCameraOffset(posX,posY);
+        [posX, posY] = this.applyCameraOffset(posX, posY);
         this.ctx.fillStyle = tint;
         this.ctx.font = fontSize+"px myfont";
         this.ctx.fillText(text, posX, posY + fontSize);
@@ -366,27 +366,61 @@ class RaylibJs {
     BeginMode2D(camera_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [offsetX, offsetY, targetX, targetY, rotation, zoom] = new Float32Array(buffer, camera_ptr, 6);
-        //console.log('BeginMode2D', offsetX, offsetY, targetX, targetY, rotation, zoom);
         if (rotation !== 0) throw Error("Rotation not yet supported");
         if (zoom !== 1) throw Error("Zoom not yet supported");
         
-        this.cameraOffset2D = { x: offsetX - targetX, y: offsetY - targetY };        
+        this.cameraOffset2D = { x: offsetX - targetX, y: offsetY - targetY };     
     }
-    EndMode2D() {this.cameraOffset2D = undefined;}
+    EndMode2D() {
+        this.cameraOffset2D = undefined;
+    }
     DrawCircle(posX, posY, radius, color_ptr)
     {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
         const color = color_hex_unpacked(r, g, b, a);        
-        [posX, posY] = this.applyCameraOffset(posX,posY);
+        [posX, posY] = this.applyCameraOffset(posX, posY);
         this.ctx.beginPath();
         this.ctx.arc(posX, posY, radius, 0, 2*Math.PI, false);
         this.ctx.fillStyle = color;
         this.ctx.fill();
         
     }
-    GetWorldToScreen2D() {}
-    GetScreenToWorld2D() {}
+    GetWorldToScreen2D(result_ptr, position_ptr, camera_ptr) {//COPY PASTE TO BELOW
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        let [posX, posY] = new Float32Array(buffer, position_ptr, 2);
+        const [offsetX, offsetY, targetX, targetY, rotation, zoom] = new Float32Array(buffer, camera_ptr, 6);
+        
+        const matOrigin = matrixTranslate(-targetX, -targetY, 0.0);
+        const matRotation = matrixTranslate(0.0, 0.0, 0.0); //TODO implement this, currently using identity matrix 
+        const matScale = matrixTranslate(0.0, 0.0, 0.0); //TODO implement this, currently using identity matrix
+        const matTranslation = matrixTranslate(offsetX, offsetY, 0.0);
+        
+        const matCamera = matrixMultiply(matrixMultiply(matOrigin, matrixMultiply(matScale, matRotation)), matTranslation);
+        
+        [posX, posY] = vector3Transform([posX, posY, 0.0], matCamera);
+        
+        //return
+        new Float32Array(buffer, result_ptr, 2).set([posX, posY]);
+    }
+    GetScreenToWorld2D(result_ptr, position_ptr, camera_ptr) { //COPY PASTE FROM ABOVE
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        let [posX, posY] = new Float32Array(buffer, position_ptr, 2);
+        const [offsetX, offsetY, targetX, targetY, rotation, zoom] = new Float32Array(buffer, camera_ptr, 6);
+        
+        const matOrigin = matrixTranslate(-targetX, -targetY, 0.0);
+        const matRotation = matrixTranslate(0.0, 0.0, 0.0); //TODO implement this, currently using identity matrix 
+        const matScale = matrixTranslate(0.0, 0.0, 0.0); //TODO implement this, currently using identity matrix
+        const matTranslation = matrixTranslate(offsetX, offsetY, 0.0);
+        
+        const matCamera = matrixMultiply(matrixMultiply(matOrigin, matrixMultiply(matScale, matRotation)), matTranslation);
+        const invertedCamera = matrixInvert(matCamera);
+        
+        [posX, posY] = vector3Transform([posX, posY, 0.0], invertedCamera);
+        
+        //return
+        new Float32Array(buffer, result_ptr, 2).set([posX, posY]);
+    }
     //End newly added
 
     raylib_js_set_entry(entry) {
@@ -553,4 +587,92 @@ function color_hex(color) {
 function getColorFromMemory(buffer, color_ptr) {
     const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
     return color_hex_unpacked(r, g, b, a);
+}
+
+//matrix functions implementation taken from raylib sourcecode
+function matrixTranslate(x, y, z)
+{
+    return [1.0, 0.0, 0.0, x,
+            0.0, 1.0, 0.0, y,
+            0.0, 0.0, 1.0, z,
+            0.0, 0.0, 0.0, 1.0
+    ]
+}
+function matrixMultiply(left, right) {
+    const mat = [];
+    mat[0] = left[0]*right[0] + left[1]*right[4] + left[2]*right[8] + left[3]*right[12];
+    mat[1] = left[0]*right[1] + left[1]*right[5] + left[2]*right[9] + left[3]*right[13];
+    mat[2] = left[0]*right[2] + left[1]*right[6] + left[2]*right[10] + left[3]*right[14];
+    mat[3] = left[0]*right[3] + left[1]*right[7] + left[2]*right[11] + left[3]*right[15];
+    mat[4] = left[4]*right[0] + left[5]*right[4] + left[6]*right[8] + left[7]*right[12];
+    mat[5] = left[4]*right[1] + left[5]*right[5] + left[6]*right[9] + left[7]*right[13];
+    mat[6] = left[4]*right[2] + left[5]*right[6] + left[6]*right[10] + left[7]*right[14];
+    mat[7] = left[4]*right[3] + left[5]*right[7] + left[6]*right[11] + left[7]*right[15];
+    mat[8] = left[8]*right[0] + left[9]*right[4] + left[10]*right[8] + left[11]*right[12];
+    mat[9] = left[8]*right[1] + left[9]*right[5] + left[10]*right[9] + left[11]*right[13];
+    mat[10] = left[8]*right[2] + left[9]*right[6] + left[10]*right[10] + left[11]*right[14];
+    mat[11] = left[8]*right[3] + left[9]*right[7] + left[10]*right[11] + left[11]*right[15];
+    mat[12] = left[12]*right[0] + left[13]*right[4] + left[14]*right[8] + left[15]*right[12];
+    mat[13] = left[12]*right[1] + left[13]*right[5] + left[14]*right[9] + left[15]*right[13];
+    mat[14] = left[12]*right[2] + left[13]*right[6] + left[14]*right[10] + left[15]*right[14];
+    mat[15] = left[12]*right[3] + left[13]*right[7] + left[14]*right[11] + left[15]*right[15];
+    return mat;
+}
+
+function matrixInvert(mat) {
+    const result = [];
+
+    // Cache the matrix values (speed optimization)
+    const a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
+    const a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
+    const a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
+    const a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15];
+
+    const b00 = a00*a11 - a01*a10;
+    const b01 = a00*a12 - a02*a10;
+    const b02 = a00*a13 - a03*a10;
+    const b03 = a01*a12 - a02*a11;
+    const b04 = a01*a13 - a03*a11;
+    const b05 = a02*a13 - a03*a12;
+    const b06 = a20*a31 - a21*a30;
+    const b07 = a20*a32 - a22*a30;
+    const b08 = a20*a33 - a23*a30;
+    const b09 = a21*a32 - a22*a31;
+    const b10 = a21*a33 - a23*a31;
+    const b11 = a22*a33 - a23*a32;
+
+    // Calculate the invert determinant (inlined to avoid double-caching)
+    const invDet = 1.0/(b00*b11 - b01*b10 + b02*b09 + b03*b08 - b04*b07 + b05*b06);
+
+    result[0] = (a11*b11 - a12*b10 + a13*b09)*invDet;
+    result[1] = (-a01*b11 + a02*b10 - a03*b09)*invDet;
+    result[2] = (a31*b05 - a32*b04 + a33*b03)*invDet;
+    result[3] = (-a21*b05 + a22*b04 - a23*b03)*invDet;
+    result[4] = (-a10*b11 + a12*b08 - a13*b07)*invDet;
+    result[5] = (a00*b11 - a02*b08 + a03*b07)*invDet;
+    result[6] = (-a30*b05 + a32*b02 - a33*b01)*invDet;
+    result[7] = (a20*b05 - a22*b02 + a23*b01)*invDet;
+    result[8] = (a10*b10 - a11*b08 + a13*b06)*invDet;
+    result[9] = (-a00*b10 + a01*b08 - a03*b06)*invDet;
+    result[10] = (a30*b04 - a31*b02 + a33*b00)*invDet;
+    result[11] = (-a20*b04 + a21*b02 - a23*b00)*invDet;
+    result[12] = (-a10*b09 + a11*b07 - a12*b06)*invDet;
+    result[13] = (a00*b09 - a01*b07 + a02*b06)*invDet;
+    result[14] = (-a30*b03 + a31*b01 - a32*b00)*invDet;
+    result[15] = (a20*b03 - a21*b01 + a22*b00)*invDet;
+
+    return result;
+}
+
+function  vector3Transform(v, mat) {
+    
+    const x = v[0];
+    const y = v[1];
+    const z = v[2];
+    
+    const posX = mat[0]*x + mat[4]*y + mat[8]*z + mat[12];
+    const posY = mat[1]*x + mat[5]*y + mat[9]*z + mat[13];
+    const posZ = mat[2]*x + mat[6]*y + mat[10]*z + mat[14]; 
+    
+    return [posX, posY, posZ];
 }
