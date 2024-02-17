@@ -288,6 +288,7 @@ class RaylibJs {
         var result = new Uint32Array(buffer, result_ptr, 5)
         var img = new Image();
         img.src = filename;
+        img.crossOrigin = "anonymous";
         this.images.push(img);
 
         result[0] = this.images.indexOf(img);
@@ -304,10 +305,17 @@ class RaylibJs {
     DrawTexture(texture_ptr, posX, posY, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr, 5);
-        // // TODO: implement tinting for DrawTexture
-        // const tint = getColorFromMemory(buffer, color_ptr);
-
-        this.ctx.drawImage(this.images[id], posX, posY);
+        const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
+        const img = this.images[id];
+        if (img.complete) {
+            const texture = genTextureTint(img, r, g, b, a)
+            this.ctx.drawImage(texture, posX, posY);
+        } else {
+            img.addEventListener('load', () => {
+                const texture = genTextureTint(img, r, g, b, a)
+                this.ctx.drawImage(texture, posX, posY);
+            }, {once: true})
+        }
     }
 
     // TODO: codepoints are not implemented
@@ -509,3 +517,78 @@ function getColorFromMemory(buffer, color_ptr) {
     const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
     return color_hex_unpacked(r, g, b, a);
 }
+
+function generateImageFilters(img) {
+    const w = img.width;
+    const h = img.height;
+    let imageFilters = [];
+
+    let canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(img, 0, 0);
+
+    const pixels = ctx.getImageData(0, 0, w, h).data;
+
+    for (let rgbI = 0; rgbI < 4; rgbI++) {
+        let canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        const to = ctx.getImageData(0, 0, w, h);
+        const toData = to.data;
+
+        for (let i = 0, len = pixels.length; i < len; i += 4) {
+            toData[i] = rgbI === 0 ? pixels[i] : 0;
+            toData[i + 1] = rgbI === 1 ? pixels[i + 1] : 0;
+            toData[i + 2] = rgbI === 2 ? pixels[i + 2] : 0;
+            toData[i + 3] = pixels[i + 3];
+        }
+
+        ctx.putImageData(to, 0, 0);
+
+        const imgComp = new Image();
+        imgComp.src = canvas.toDataURL();
+        imgComp.height = canvas.height;
+        imgComp.width = canvas.width;
+
+        imageFilters.push(imgComp);
+    }
+
+    return imageFilters;
+}
+
+function genTextureTint(img, r, g, b, a) {
+    const imfs = generateImageFilters(img);
+    const buff = document.createElement("canvas");
+    buff.width = img.width;
+    buff.height = img.height;
+    const alpha = a / 255;
+
+    const ctx = buff.getContext("2d");
+
+    ctx.globalAlpha = 1 - alpha;
+    ctx.globalCompositeOperation = "copy";
+    ctx.drawImage(imfs[3], 0, 0);
+
+    ctx.globalCompositeOperation = "lighter";
+    if (r > 0) {
+        ctx.globalAlpha = (r * alpha) / 255.0;
+        ctx.drawImage(imfs[0], 0, 0);
+    }
+    if (g > 0) {
+        ctx.globalAlpha = (g * alpha) / 255.0;
+        ctx.drawImage(imfs[1], 0, 0);
+    }
+    if (b > 0) {
+        ctx.globalAlpha = (b * alpha) / 255.0;
+        ctx.drawImage(imfs[2], 0, 0);
+    }
+
+    return buff;
+}
+
