@@ -3,12 +3,35 @@
 <head>
     <title>Hello, Raylib!</title>
     <style>
+
+        :root {
+            --color-dark: #181818;
+            --color-lite: #e7e7e7;
+        }
+
+        body {
+            /* Lite Mode */
+            background: var(--color-lite);
+            color: var(--color-dark);
+
+            /* Dark Mode */
+            @media (prefers-color-scheme: dark) {
+                background: var(--color-dark);
+                color: var(--color-lite);
+            }
+        }
+
         #game {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            border: 1px solid black
+            border: 1px solid var(--color-dark);
+
+            @media (prefers-color-scheme: dark) {
+               border: 1px solid var(--color-lite);
+            }
+
         }
 
         #raylib-example-select {
