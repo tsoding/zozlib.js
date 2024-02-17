@@ -69,7 +69,7 @@
     </select>
     <canvas id="game"></canvas>
     <script type="module">
-        import { RaylibJs, RaylibJsWorker, glfwKeyMapping } from "./raylib.js"
+        import { RaylibJs, RaylibJsWorker, glfwKeyMapping, browserPlatform } from "./raylib.js"
 
         function addEventListeners (raylibJs, canvas) {
             const keyDown = (e) => {
@@ -114,11 +114,6 @@
                 "worker": ({ worker, canvas, platform }) => new RaylibJsWorker(worker, canvas, platform),
             }
             let oldCanvas = canvas
-            const platform = {
-                updateTitle (title) {
-                    document.title = title
-                }
-            }
             return () => {
                 if (raylibJs) {
                     raylibJs.stop()
@@ -130,7 +125,7 @@
                 oldCanvas = newCanvas
                 raylibJs = factories[envSelector.value]({
                     canvas: newCanvas,
-                    platform,
+                    platform: browserPlatform,
                     worker,
                 })
                 removeEventListeners = addEventListeners(raylibJs, newCanvas)

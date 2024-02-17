@@ -21,6 +21,32 @@ const LOG_ERROR   = iota++; // Error logging, used on unrecoverable failures
 const LOG_FATAL   = iota++; // Fatal logging, used to abort program: exit(EXIT_FAILURE)
 const LOG_NONE    = iota++; // Disable logging
 
+export const browserPlatform = {
+    updateTitle(title) {
+        document.title = title
+    },
+    traceLog(logLevel, text, args) {
+        switch(logLevel) {
+        case LOG_ALL:     console.log(`ALL: ${text} ${args}`);     break;
+        case LOG_TRACE:   console.log(`TRACE: ${text} ${args}`);   break;
+        case LOG_DEBUG:   console.log(`DEBUG: ${text} ${args}`);   break;
+        case LOG_INFO:    console.log(`INFO: ${text} ${args}`);    break;
+        case LOG_WARNING: console.log(`WARNING: ${text} ${args}`); break;
+        case LOG_ERROR:   console.log(`ERROR: ${text} ${args}`);   break;
+        case LOG_FATAL:   throw new Error(`FATAL: ${text}`);
+        case LOG_NONE:    console.log(`NONE: ${text} ${args}`);    break;
+        }
+    },
+    addFont(font) {
+        document.fonts.add(font)
+    },
+    loadImage(filename) {
+        var img = new Image();
+        img.src = filename;
+        return { status: "loaded", data: img }
+    }
+}
+
 export class RaylibJs {
     // TODO: We stole the font from the website
     // (https://raylib.com/) and it's slightly different than
@@ -197,16 +223,7 @@ export class RaylibJs {
         // TODO: Implement printf style formatting for TraceLog
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
-        switch(logLevel) {
-        case LOG_ALL:     console.log(`ALL: ${text} ${args}`);     break;
-        case LOG_TRACE:   console.log(`TRACE: ${text} ${args}`);   break;
-        case LOG_DEBUG:   console.log(`DEBUG: ${text} ${args}`);   break;
-        case LOG_INFO:    console.log(`INFO: ${text} ${args}`);    break;
-        case LOG_WARNING: console.log(`WARNING: ${text} ${args}`); break;
-        case LOG_ERROR:   console.log(`ERROR: ${text} ${args}`);   break;
-        case LOG_FATAL:   throw new Error(`FATAL: ${text}`);
-        case LOG_NONE:    console.log(`NONE: ${text} ${args}`);    break;
-        }
+        this.platform.traceLog(logLevel, text, args);
     }
 
     GetMousePosition(result_ptr) {
@@ -276,11 +293,8 @@ export class RaylibJs {
         const filename = cstr_by_ptr(buffer, filename_ptr);
 
         var result = new Uint32Array(buffer, result_ptr, 5)
-        var img = new Image();
-        img.src = filename;
-        this.images.push(img);
-
-        result[0] = this.images.indexOf(img);
+        const img = this.platform.loadImage(filename)
+        result[0] = this.images.push(img) - 1;
         // TODO: get the true width and height of the image
         result[1] = 256; // width
         result[2] = 256; // height
@@ -294,10 +308,17 @@ export class RaylibJs {
     DrawTexture(texture_ptr, posX, posY, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr, 5);
-        // // TODO: implement tinting for DrawTexture
-        // const tint = getColorFromMemory(buffer, color_ptr);
-
-        this.ctx.drawImage(this.images[id], posX, posY);
+        const img = this.images[id];
+        switch (img.status) {
+            case "loaded":
+                // // TODO: implement tinting for DrawTexture
+                // const tint = getColorFromMemory(buffer, color_ptr);
+                this.ctx.drawImage(img.data, posX, posY);
+            case "loading":
+                return;
+            case "error":
+                this.platform.traceLog(LOG_FATAL, `Failed to load image: ${img.error}`);
+        }
     }
 
     // TODO: codepoints are not implemented
@@ -307,7 +328,7 @@ export class RaylibJs {
         // TODO: dynamically generate the name for the font
         // Support more than one custom font
         const font = new FontFace("myfont", `url(${fileName})`);
-        document.fonts.add(font);
+        this.platform.addFont(font);
         font.load();
     }
 
@@ -353,17 +374,47 @@ const RESPONSE_MESSAGE_TYPE = {
     START_SUCCESS: 0,
     START_FAIL: 1,
     UPDATE_TITLE: 2,
+    TRACE_LOG: 3,
 }
 
 export function makeMessagesHandler(self) {
     let raylibJs = undefined
     const platform = {
-        updateTitle: (title) => {
+        updateTitle(title) {
             self.postMessage({
                 type: RESPONSE_MESSAGE_TYPE.UPDATE_TITLE,
                 title
             })
         },
+        traceLog(logLevel, message, args) {
+            self.postMessage({
+                type: RESPONSE_MESSAGE_TYPE.TRACE_LOG,
+                logLevel,
+                message,
+                args,
+            })
+        },
+        addFont(font) {
+            self.fonts.add(font)
+        },
+        loadImage(filename) {
+            const img = {
+                status: "loading",
+                data: undefined,
+                error: undefined
+            }
+            fetch(filename)
+                .then(res => res.blob())
+                .then(blob => createImageBitmap(blob))
+                .then(data => {
+                    img.status = "loaded"
+                    img.data = data
+                }, (error) => {
+                    img.status = "error"
+                    img.error = error
+                })
+            return img
+        }
     }
     const handlers = new Array(Object.keys(REQUEST_MESSAGE_TYPE).length)
     handlers[REQUEST_MESSAGE_TYPE.INIT] = ({ canvas }) => {
@@ -429,6 +480,14 @@ export class RaylibJsWorker {
         }
         case RESPONSE_MESSAGE_TYPE.UPDATE_TITLE: {
             this.platform.updateTitle(event.data.title)
+            break
+        }
+        case RESPONSE_MESSAGE_TYPE.TRACE_LOG: {
+            this.platform.traceLog(
+                event.data.logLevel,
+                event.data.message,
+                event.data.args,
+            )
             break
         }
         default:
