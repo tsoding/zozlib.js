@@ -32,6 +32,7 @@ class RaylibJs {
         this.currentPressedKeyState = new Set();
         this.currentMouseWheelMoveState = 0;
         this.currentMousePosition = {x: 0, y: 0};
+        this.images = [];
         this.quit = false;
     }
 
@@ -251,6 +252,36 @@ class RaylibJs {
         bytes[subtext.length] = 0;
 
         return bytes;
+    }
+
+    // RLAPI Texture2D LoadTexture(const char *fileName);
+    LoadTexture(result_ptr, filename_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const filename = cstr_by_ptr(buffer, filename_ptr);
+
+        var result = new Uint32Array(buffer, result_ptr, 5)
+        var img = new Image();
+        img.src = filename;
+        this.images.push(img);
+
+        result[0] = this.images.indexOf(img);
+        // TODO: get the true width and height of the image
+        result[1] = 256; // width
+        result[2] = 256; // height
+        result[3] = 1; // mipmaps
+        result[4] = 7; // format PIXELFORMAT_UNCOMPRESSED_R8G8B8A8
+
+        return result;
+    }
+
+    // RLAPI void DrawTexture(Texture2D texture, int posX, int posY, Color tint);
+    DrawTexture(texture_ptr, posX, posY, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr, 5);
+        // // TODO: implement tinting for DrawTexture
+        // const tint = getColorFromMemory(buffer, color_ptr);
+
+        this.ctx.drawImage(this.images[id], posX, posY);
     }
 
     raylib_js_set_entry(entry) {
