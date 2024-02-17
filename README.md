@@ -15,7 +15,13 @@ We have no plans to replace the official Emscripten version of Raylib. This is a
 The demo is deployed to GitHub pages: https://tsoding.github.io/raylib.js/ But you can run it locally.
 
 ```console
-$ ./build.sh
 $ python3 -m http.server 6969
 $ <browser> http://localhost:6969/
+```
+
+## Build Demos
+
+```console
+$ clang -o nob nob.c
+$ ./nob
 ```
