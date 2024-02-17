@@ -3,12 +3,35 @@
 <head>
     <title>Hello, Raylib!</title>
     <style>
+
+        :root {
+            --color-dark: #181818;
+            --color-lite: #e7e7e7;
+        }
+
+        body {
+            /* Lite Mode */
+            background: var(--color-lite);
+            color: var(--color-dark);
+
+            /* Dark Mode */
+            @media (prefers-color-scheme: dark) {
+                background: var(--color-dark);
+                color: var(--color-lite);
+            }
+        }
+
         #game {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            border: 1px solid black
+            border: 1px solid var(--color-dark);
+
+            @media (prefers-color-scheme: dark) {
+               border: 1px solid var(--color-lite);
+            }
+
         }
 
         .raylib-select {
@@ -42,8 +65,7 @@
     </select>
     <label for="raylib-env-select">Execution context:</label>
     <select id="raylib-env-select" class="raylib-select" onchange="run()">
-        <option value="main">main thread</option>
-        <option value="worker">worker thread</option>
+        <!-- This is populated by js -->
     </select>
     <canvas id="game"></canvas>
     <script type="module">
@@ -118,15 +140,30 @@
             }
         }
 
-        // TODO: store the current example in the URL
+        function makeQueryUpdater (...params) {
+            const queryParams = new URLSearchParams(window.location.search);
+            for (const { name, isValid, selector, defaultValue } of params) {
+                const value = queryParams.get(name);
+                const newValue = isValid(value) ? value : defaultValue
+                queryParams.set(name, newValue);
+                selector.value = newValue
+            }
+            history.replaceState(null, null, "?"+queryParams.toString());
+            return () => {
+                for (let { name, selector } of params) {
+                    queryParams.set(name, selector.value);
+                }
+                history.pushState(null, null, "?"+queryParams.toString());
+            }
+        }
+
         const wasmPaths = {
             "tsoding": ["game",],
             "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel",],
             "shapes": ["shapes_colors_palette"]
         }
-
+        const defaultWasm = Object.values(wasmPaths)[0];
         const raylibExampleSelect = document.getElementById("raylib-example-select");
-
         for (const exampleCategory in wasmPaths) {
             raylibExampleSelect.innerHTML += `<optgroup label="${exampleCategory}">`
             for (const example of wasmPaths[exampleCategory]) {
@@ -134,19 +171,47 @@
             }
             raylibExampleSelect.innerHTML += "</optgroup>"
         }
+
+        const envs = {
+            "main": "main thread",
+            "worker": "worker thread",
+        }
+        const defaultEnv = Object.keys(envs)[0];
+        const raylibEnvSelect = document.getElementById("raylib-env-select");
+        for (const env in envs) {
+            raylibEnvSelect.innerHTML += `<option value="${env}">${envs[env]}</option>`
+        }
         
-        window.run = makeRunner({
+        const run = makeRunner({
             exampleSelector: raylibExampleSelect,
-            envSelector: document.getElementById("raylib-env-select"),
+            envSelector: raylibEnvSelect,
             canvas: document.getElementById("game"),
             worker: new Worker("raylib.worker.js", {
                 type: "module",
             }),
         })
+        const updateQuery = makeQueryUpdater(
+            {
+                name: "example",
+                selector: raylibExampleSelect,
+                defaultValue: defaultWasm,
+                isValid: (value) => Object.values(wasmPaths).flat().includes(value),
+            },
+            {
+                name: "env",
+                selector: raylibEnvSelect,
+                defaultValue: defaultEnv,
+                isValid: (value) => value in envs,
+            }
+        )
+        window.run = () => {
+            updateQuery()
+            run()
+        }
 
         const { protocol } = window.location;
         const isHosted = protocol !== "file:";
-
+        
         window.addEventListener("load", isHosted ? window.run : () => {
             document.body.innerHTML = `
                 <div class="not-hosted-msg">
