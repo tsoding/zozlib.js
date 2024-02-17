@@ -43,12 +43,12 @@
         </select>
     <canvas id="game"></canvas>
     <script>
-        // TODO: store the current example in the URL
         const wasmPaths = {
             "tsoding": ["game",],
             "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel",],
             "shapes": ["shapes_colors_palette"]
         }
+        const defaultWasm = Object.values(wasmPaths)[0];
 
         const raylibExampleSelect = document.getElementById("raylib-example-select");
 
@@ -65,6 +65,11 @@
         let raylibJs = undefined;
 
         function startRaylib(selectedWasm){
+            var queryParams = new URLSearchParams(window.location.search);
+            queryParams.set("example", selectedWasm);
+            history.pushState(null, null, "?"+queryParams.toString());
+            raylibExampleSelect.value = selectedWasm;
+
             if (isHosted) {
                 if (raylibJs !== undefined) {
                     raylibJs.stop();
@@ -90,7 +95,11 @@
             }
         }
 
-        startRaylib("game");
+        let queryParams = new URLSearchParams(window.location.search);
+        const exampleParam = queryParams.get("example") ?? defaultWasm;
+
+        if (Object.values(wasmPaths).flat().includes(exampleParam)) startRaylib(exampleParam);
+        else startRaylib(defaultWasm);
     </script>
 </body>
 </html>
