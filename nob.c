@@ -38,6 +38,11 @@ Example examples[] = {
         .bin_path   = "./build/core_input_mouse_wheel",
         .wasm_path  = "./wasm/core_input_mouse_wheel.wasm",
     },
+    {
+        .src_path   = "./examples/text_writing_anim.c",
+        .bin_path   = "./build/text_writing_anim",
+        .wasm_path  = "./wasm/text_writing_anim.wasm",
+    },
 };
 
 bool build_native(void)
