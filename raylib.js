@@ -45,13 +45,13 @@ class RaylibJs {
         this.images = [];
         this.quit = false;
         
-        this.camera2DOffset = undefined;
+        this.cameraOffset2D = undefined;
     }
     
     applyCameraOffset(x, y) {
-        if (this.camera2DOffset) {
-            x += this.camera2DOffset.x;
-            y += this.camera2DOffset.y;
+        if (this.cameraOffset2D) {
+            x += this.cameraOffset2D.x;
+            y += this.cameraOffset2D.y;
         }
         return [x, y];
     }
@@ -370,11 +370,9 @@ class RaylibJs {
         if (rotation !== 0) throw Error("Rotation not yet supported");
         if (zoom !== 1) throw Error("Zoom not yet supported");
         
-        this.camera2DOffset = { x: offsetX - targetX, y: offsetY - targetY };        
-        
-        
+        this.cameraOffset2D = { x: offsetX - targetX, y: offsetY - targetY };        
     }
-    EndMode2D() {this.camera2DOffset = undefined;}
+    EndMode2D() {this.cameraOffset2D = undefined;}
     DrawCircle(posX, posY, radius, color_ptr)
     {
         const buffer = this.wasm.instance.exports.memory.buffer;
@@ -387,6 +385,9 @@ class RaylibJs {
         this.ctx.fill();
         
     }
+    GetWorldToScreen2D() {}
+    GetScreenToWorld2D() {}
+    //End newly added
 
     raylib_js_set_entry(entry) {
         this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);

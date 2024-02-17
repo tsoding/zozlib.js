@@ -14,6 +14,7 @@
 ********************************************************************************************/
 
 #include "raylib.h"
+#define RAYMATH_IMPLEMENTATION
 #include "raymath.h"
 
 void raylib_js_set_entry(void (*entry)(void));
@@ -81,6 +82,16 @@ void UpdateCameraPlayerBoundsPush(Camera2D *camera, Player *player, EnvItem *env
         "Follow player center horizontally; update player center vertically after landing",
         "Player push camera on getting too close to screen edge"
     };
+    
+//custom MATH funcitons    
+float myfminf(float a, float b) {
+    if (b < a ) return b;
+    return a;
+}
+float myfmaxf(float a, float b) {
+    if (b > a ) return b;
+    return a;
+}
 
 void GameFrame() {
 
@@ -232,10 +243,10 @@ void UpdateCameraCenterInsideMap(Camera2D *camera, Player *player, EnvItem *envI
     for (int i = 0; i < envItemsLength; i++)
     {
         EnvItem *ei = envItems + i;
-        minX = fminf(ei->rect.x, minX);
-        maxX = fmaxf(ei->rect.x + ei->rect.width, maxX);
-        minY = fminf(ei->rect.y, minY);
-        maxY = fmaxf(ei->rect.y + ei->rect.height, maxY);
+        minX = myfminf(ei->rect.x, minX);
+        maxX = myfmaxf(ei->rect.x + ei->rect.width, maxX);
+        minY = myfminf(ei->rect.y, minY);
+        maxY = myfmaxf(ei->rect.y + ei->rect.height, maxY);
     }
 
     Vector2 max = GetWorldToScreen2D((Vector2){ maxX, maxY }, *camera);
@@ -259,7 +270,7 @@ void UpdateCameraCenterSmoothFollow(Camera2D *camera, Player *player, EnvItem *e
 
     if (length > minEffectLength)
     {
-        float speed = fmaxf(fractionSpeed*length, minSpeed);
+        float speed = myfmaxf(fractionSpeed*length, minSpeed);
         camera->target = Vector2Add(camera->target, Vector2Scale(diff, speed*delta/length));
     }
 }
