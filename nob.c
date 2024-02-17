@@ -29,9 +29,14 @@ Example examples[] = {
         .wasm_path  = "./wasm/shapes_colors_palette.wasm",
     },
     {
-        .src_path   = "game.c",
-        .bin_path = "./build/game",
-        .wasm_path  = "wasm/game.wasm",
+        .src_path   = "./examples/tsoding_ball.c",
+        .bin_path = "./build/tsoding_ball",
+        .wasm_path  = "./wasm/tsoding_ball.wasm",
+    },
+    {
+        .src_path   = "./examples/tsoding_snake/tsoding_snake.c",
+        .bin_path = "./build/tsoding_snake",
+        .wasm_path  = "./wasm/tsoding_snake.wasm",
     },
     {
         .src_path   = "./examples/core_input_mouse_wheel.c",

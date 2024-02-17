@@ -189,7 +189,7 @@ export class RaylibJs {
 
         const lines = text.split('\n');
         for (var i = 0; i < lines.length; i++) {
-            this.ctx.fillText(lines[i], posX, posY + (i * fontSize));
+            this.ctx.fillText(lines[i], posX, posY + fontSize + (i * fontSize));
         }
     }
 
