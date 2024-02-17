@@ -44,6 +44,16 @@ class RaylibJs {
         this.currentMousePosition = {x: 0, y: 0};
         this.images = [];
         this.quit = false;
+        
+        this.camera2DOffset = undefined;
+    }
+    
+    applyCameraOffset(x, y) {
+        if (this.camera2DOffset) {
+            x += this.camera2DOffset.x;
+            y += this.camera2DOffset.y;
+        }
+        return [x, y];
     }
 
     constructor() {
@@ -146,8 +156,10 @@ class RaylibJs {
 
     DrawCircleV(center_ptr, radius, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
-        const [x, y] = new Float32Array(buffer, center_ptr, 2);
+        let [x, y] = new Float32Array(buffer, center_ptr, 2);
+        [x, y] = this.applyCameraOffset(x, y);
         const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
+        
         const color = color_hex_unpacked(r, g, b, a);
         this.ctx.beginPath();
         this.ctx.arc(x, y, radius, 0, 2*Math.PI, false);
@@ -164,7 +176,8 @@ class RaylibJs {
     DrawText(text_ptr, posX, posY, fontSize, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
-        const color = getColorFromMemory(buffer, color_ptr);
+        const color = getColorFromMemory(buffer, color_ptr);        
+        [posX, posY] = this.applyCameraOffset(posX, posY);
         fontSize *= this.#FONT_SCALE_MAGIC;
         this.ctx.fillStyle = color;
         // TODO: since the default font is part of Raylib the css that defines it should be located in raylib.js and not in index.html
@@ -180,6 +193,7 @@ class RaylibJs {
     DrawRectangle(posX, posY, width, height, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const color = getColorFromMemory(buffer, color_ptr);
+        [posX, posY] = this.applyCameraOffset(posX, posY);
         this.ctx.fillStyle = color;
         this.ctx.fillRect(posX, posY, width, height);
     }
@@ -243,7 +257,8 @@ class RaylibJs {
 
     DrawRectangleRec(rec_ptr, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
-        const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
+        let [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
+        [x, y] = this.applyCameraOffset(x, y);
         const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.fillStyle = color;
         this.ctx.fillRect(x, y, w, h);
@@ -251,7 +266,9 @@ class RaylibJs {
 
     DrawRectangleLinesEx(rec_ptr, lineThick, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
-        const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
+        let [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
+        [x, y] = this.applyCameraOffset(x, y);
+
         const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.strokeStyle = color;
         this.ctx.lineWidth = lineThick;
@@ -337,11 +354,38 @@ class RaylibJs {
     DrawTextEx(font, text_ptr, position_ptr, fontSize, spacing, tint_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
-        const [posX, posY] = new Float32Array(buffer, position_ptr, 2);
+        let [posX, posY] = new Float32Array(buffer, position_ptr, 2);
         const tint = getColorFromMemory(buffer, tint_ptr);
+        [posX, posY] = this.applyCameraOffset(posX,posY);
         this.ctx.fillStyle = tint;
         this.ctx.font = fontSize+"px myfont";
         this.ctx.fillText(text, posX, posY + fontSize);
+    }
+    
+    // Newly added
+    BeginMode2D(camera_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [offsetX, offsetY, targetX, targetY, rotation, zoom] = new Float32Array(buffer, camera_ptr, 6);
+        //console.log('BeginMode2D', offsetX, offsetY, targetX, targetY, rotation, zoom);
+        if (rotation !== 0) throw Error("Rotation not yet supported");
+        if (zoom !== 1) throw Error("Zoom not yet supported");
+        
+        this.camera2DOffset = { x: offsetX - targetX, y: offsetY - targetY };        
+        
+        
+    }
+    EndMode2D() {this.camera2DOffset = undefined;}
+    DrawCircle(posX, posY, radius, color_ptr)
+    {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
+        const color = color_hex_unpacked(r, g, b, a);        
+        [posX, posY] = this.applyCameraOffset(posX,posY);
+        this.ctx.beginPath();
+        this.ctx.arc(posX, posY, radius, 0, 2*Math.PI, false);
+        this.ctx.fillStyle = color;
+        this.ctx.fill();
+        
     }
 
     raylib_js_set_entry(entry) {
