@@ -331,7 +331,6 @@ class RaylibJs {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         const result = new Float32Array(buffer, result_ptr, 2);
-        this.ctx.letterSpacing = spacing;
         this.ctx.font = fontSize+"px myfont";
         const metrics = this.ctx.measureText(text)
         result[0] = metrics.width;
@@ -343,7 +342,6 @@ class RaylibJs {
         const text = cstr_by_ptr(buffer, text_ptr);
         const [posX, posY] = new Float32Array(buffer, position_ptr, 2);
         const tint = getColorFromMemory(buffer, tint_ptr);
-        this.ctx.letterSpacing = spacing;
         this.ctx.fillStyle = tint;
         this.ctx.font = fontSize+"px myfont";
         this.ctx.fillText(text, posX, posY + fontSize);
