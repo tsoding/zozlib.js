@@ -11,6 +11,16 @@ function make_environment(env) {
     });
 }
 
+let iota = 0;
+const LOG_ALL     = iota++; // Display all logs
+const LOG_TRACE   = iota++; // Trace logging, intended for internal use only
+const LOG_DEBUG   = iota++; // Debug logging, used for internal debugging, it should be disabled on release builds
+const LOG_INFO    = iota++; // Info logging, used for program execution info
+const LOG_WARNING = iota++; // Warning logging, used on recoverable failures
+const LOG_ERROR   = iota++; // Error logging, used on unrecoverable failures
+const LOG_FATAL   = iota++; // Fatal logging, used to abort program: exit(EXIT_FAILURE)
+const LOG_NONE    = iota++; // Disable logging
+
 class RaylibJs {
     // TODO: We stole the font from the website
     // (https://raylib.com/) and it's slightly different than
@@ -192,6 +202,22 @@ class RaylibJs {
         return args[0];
     }
 
+    TraceLog(logLevel, text_ptr, ... args) {
+        // TODO: Implement printf style formatting for TraceLog
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const text = cstr_by_ptr(buffer, text_ptr);
+        switch(logLevel) {
+        case LOG_ALL:     console.log(`ALL: ${text} ${args}`);     break;
+        case LOG_TRACE:   console.log(`TRACE: ${text} ${args}`);   break;
+        case LOG_DEBUG:   console.log(`DEBUG: ${text} ${args}`);   break;
+        case LOG_INFO:    console.log(`INFO: ${text} ${args}`);    break;
+        case LOG_WARNING: console.log(`WARNING: ${text} ${args}`); break;
+        case LOG_ERROR:   console.log(`ERROR: ${text} ${args}`);   break;
+        case LOG_FATAL:   throw new Error(`FATAL: ${text}`);
+        case LOG_NONE:    console.log(`NONE: ${text} ${args}`);    break;
+        }
+    }
+
     GetMousePosition(result_ptr) {
         const bcrect = this.ctx.canvas.getBoundingClientRect();
         const x = this.currentMousePosition.x - bcrect.left;
@@ -282,6 +308,40 @@ class RaylibJs {
         // const tint = getColorFromMemory(buffer, color_ptr);
 
         this.ctx.drawImage(this.images[id], posX, posY);
+    }
+
+    // TODO: codepoints are not implemented
+    LoadFontEx(result_ptr, fileName_ptr/*, fontSize, codepoints, codepointCount*/) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const fileName = cstr_by_ptr(buffer, fileName_ptr);
+        // TODO: dynamically generate the name for the font
+        // Support more than one custom font
+        const font = new FontFace("myfont", `url(${fileName})`);
+        document.fonts.add(font);
+        font.load();
+    }
+
+    GenTextureMipmaps() {}
+    SetTextureFilter() {}
+
+    MeasureTextEx(result_ptr, font, text_ptr, fontSize, spacing) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const text = cstr_by_ptr(buffer, text_ptr);
+        const result = new Float32Array(buffer, result_ptr, 2);
+        this.ctx.font = fontSize+"px myfont";
+        const metrics = this.ctx.measureText(text)
+        result[0] = metrics.width;
+        result[1] = fontSize;
+    }
+
+    DrawTextEx(font, text_ptr, position_ptr, fontSize, spacing, tint_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const text = cstr_by_ptr(buffer, text_ptr);
+        const [posX, posY] = new Float32Array(buffer, position_ptr, 2);
+        const tint = getColorFromMemory(buffer, tint_ptr);
+        this.ctx.fillStyle = tint;
+        this.ctx.font = fontSize+"px myfont";
+        this.ctx.fillText(text, posX, posY + fontSize);
     }
 
     raylib_js_set_entry(entry) {
