@@ -310,11 +310,6 @@ class RaylibJs {
         if (img.complete) {
             const texture = genTextureTint(img, r, g, b, a)
             this.ctx.drawImage(texture, posX, posY);
-        } else {
-            img.addEventListener('load', () => {
-                const texture = genTextureTint(img, r, g, b, a)
-                this.ctx.drawImage(texture, posX, posY);
-            }, {once: true})
         }
     }
 
