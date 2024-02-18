@@ -391,12 +391,7 @@ class RaylibJs {
         let [posX, posY] = new Float32Array(buffer, position_ptr, 2);
         const [offsetX, offsetY, targetX, targetY, rotation, zoom] = new Float32Array(buffer, camera_ptr, 6);
         
-        const matOrigin = matrixTranslate(-targetX, -targetY, 0.0);
-        const matRotation = matrixTranslate(0.0, 0.0, 0.0); //TODO implement this, currently using identity matrix 
-        const matScale = matrixTranslate(0.0, 0.0, 0.0); //TODO implement this, currently using identity matrix
-        const matTranslation = matrixTranslate(offsetX, offsetY, 0.0);
-        
-        const matCamera = matrixMultiply(matrixMultiply(matOrigin, matrixMultiply(matScale, matRotation)), matTranslation);
+        const matCamera = getCameraMatrix2D(offsetX, offsetY, targetX, targetY, rotation, zoom);
         
         [posX, posY] = vector3Transform([posX, posY, 0.0], matCamera);
         
@@ -408,12 +403,7 @@ class RaylibJs {
         let [posX, posY] = new Float32Array(buffer, position_ptr, 2);
         const [offsetX, offsetY, targetX, targetY, rotation, zoom] = new Float32Array(buffer, camera_ptr, 6);
         
-        const matOrigin = matrixTranslate(-targetX, -targetY, 0.0);
-        const matRotation = matrixTranslate(0.0, 0.0, 0.0); //TODO implement this, currently using identity matrix 
-        const matScale = matrixTranslate(0.0, 0.0, 0.0); //TODO implement this, currently using identity matrix
-        const matTranslation = matrixTranslate(offsetX, offsetY, 0.0);
-        
-        const matCamera = matrixMultiply(matrixMultiply(matOrigin, matrixMultiply(matScale, matRotation)), matTranslation);
+        const matCamera = getCameraMatrix2D(offsetX, offsetY, targetX, targetY, rotation, zoom);
         const invertedCamera = matrixInvert(matCamera);
         
         [posX, posY] = vector3Transform([posX, posY, 0.0], invertedCamera);
@@ -590,14 +580,26 @@ function getColorFromMemory(buffer, color_ptr) {
 }
 
 //matrix functions implementation taken from raylib sourcecode
+
+function getCameraMatrix2D(offsetX, offsetY, targetX, targetY, rotation, zoom)
+{
+    const matOrigin = matrixTranslate(-targetX, -targetY, 0.0);
+    const matRotation = matrixTranslate(0.0, 0.0, 0.0); //TODO implement this, currently using identity matrix 
+    const matScale = matrixTranslate(0.0, 0.0, 0.0); //TODO implement this, currently using identity matrix
+    const matTranslation = matrixTranslate(offsetX, offsetY, 0.0);
+    
+    const matCamera = matrixMultiply(matrixMultiply(matOrigin, matrixMultiply(matScale, matRotation)), matTranslation);
+    return matCamera;
+}
+
 function matrixTranslate(x, y, z)
 {
     return [1.0, 0.0, 0.0, x,
             0.0, 1.0, 0.0, y,
             0.0, 0.0, 1.0, z,
-            0.0, 0.0, 0.0, 1.0
-    ]
+            0.0, 0.0, 0.0, 1.0]
 }
+
 function matrixMultiply(left, right) {
     const mat = [];
     mat[0] = left[0]*right[0] + left[1]*right[4] + left[2]*right[8] + left[3]*right[12];
