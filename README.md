@@ -4,8 +4,6 @@ Unofficial Implementation of Subset of [Raylib](https://github.com/raysan5/rayli
 
 **WARNING! This is a Research Project and not guaranteed to be useful in present or/and future! If you quickly need to port your Raylib game to Web just follow these instructions: https://github.com/raysan5/raylib/wiki/Working-for-Web-(HTML5)**
 
-*This project used to be called "Raylib.js", but it was decided to rename it "Zozlib.js" to avoid confusion with the original [Raylib](https://github.com/raysan5/raylib) project*
-
 ## Main Idea
 
 The main idea is to enable a very specific style of [Programming in C for WebAssembly without Emscripten](https://surma.dev/things/c-to-webassembly/) but for Raylib. The current limitation is that Zozlib.js is not fully implemented, but it does not mean it is useless! If you have a Game that uses only implemented function you can use Zozlib.js. And if only few needed functions are not implemented you can implement them and submit a PR thus improving the library for future uses.
