@@ -584,6 +584,9 @@ function genTextureTint(img, r, g, b, a) {
         ctx.drawImage(imfs[2], 0, 0);
     }
 
-    return buff;
+    const buffImg = new Image(buff.width, buff.height);
+    buffImg.src = buff.toDataURL()
+
+    return buffImg;
 }
 
