@@ -45,13 +45,14 @@ class RaylibJs {
         this.images = [];
         this.quit = false;
         
-        this.cameraOffset2D = undefined;
+        this.camera2D = undefined;
     }
     
     applyCameraOffset(x, y) {
-        if (this.cameraOffset2D) {
-            x += this.cameraOffset2D.x;
-            y += this.cameraOffset2D.y;
+        if (this.camera2D) {
+            const [offsetX, offsetY, targetX, targetY, rotation, zoom] = this.camera2D;
+            x += (offsetX - targetX);
+            y += (offsetY - targetY);
         }
         return [x, y];
     }
@@ -369,11 +370,13 @@ class RaylibJs {
         if (rotation !== 0) throw Error("Rotation not yet supported");
         if (zoom !== 1) throw Error("Zoom not yet supported");
         
-        this.cameraOffset2D = { x: offsetX - targetX, y: offsetY - targetY };     
+        this.camera2D = [offsetX, offsetY, targetX, targetY, rotation, zoom];     
     }
+    
     EndMode2D() {
-        this.cameraOffset2D = undefined;
+        this.camera2D = undefined;
     }
+    
     DrawCircle(posX, posY, radius, color_ptr)
     {
         const buffer = this.wasm.instance.exports.memory.buffer;
@@ -386,6 +389,7 @@ class RaylibJs {
         this.ctx.fill();
         
     }
+    
     GetWorldToScreen2D(result_ptr, position_ptr, camera_ptr) {//COPY PASTE TO BELOW
         const buffer = this.wasm.instance.exports.memory.buffer;
         let [posX, posY] = new Float32Array(buffer, position_ptr, 2);
@@ -584,20 +588,28 @@ function getColorFromMemory(buffer, color_ptr) {
 function getCameraMatrix2D(offsetX, offsetY, targetX, targetY, rotation, zoom)
 {
     const matOrigin = matrixTranslate(-targetX, -targetY, 0.0);
-    const matRotation = matrixTranslate(0.0, 0.0, 0.0); //TODO implement this, currently using identity matrix 
-    const matScale = matrixTranslate(0.0, 0.0, 0.0); //TODO implement this, currently using identity matrix
+    const matRotation = matrixRotate(0.0, 0.0, 1.0, rotation*(Math.PI/180.0));
+    const matScale = matrixScale(zoom, zoom, 1.0);
     const matTranslation = matrixTranslate(offsetX, offsetY, 0.0);
     
     const matCamera = matrixMultiply(matrixMultiply(matOrigin, matrixMultiply(matScale, matRotation)), matTranslation);
     return matCamera;
 }
 
+function matrixScale(x, y, z)
+{
+    return [ x, 0.0, 0.0, 0.0,
+             0.0, y, 0.0, 0.0,
+             0.0, 0.0, z, 0.0,
+             0.0, 0.0, 0.0, 1.0];
+}
+
 function matrixTranslate(x, y, z)
 {
-    return [1.0, 0.0, 0.0, x,
-            0.0, 1.0, 0.0, y,
-            0.0, 0.0, 1.0, z,
-            0.0, 0.0, 0.0, 1.0]
+    return [1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            x, y, z, 1.0]
 }
 
 function matrixMultiply(left, right) {
@@ -665,6 +677,48 @@ function matrixInvert(mat) {
 
     return result;
 }
+
+function matrixRotate(x, y, z, angle)
+{
+    const result = [];
+
+    const lengthSquared = x*x + y*y + z*z;
+
+    if ((lengthSquared != 1.0) && (lengthSquared != 0.0))
+    {
+        const ilength = 1.0/Math.sqrt(lengthSquared);
+        x *= ilength;
+        y *= ilength;
+        z *= ilength;
+    }
+
+    const sinres = Math.sin(angle);
+    const cosres = Math.cos(angle);
+    const t = 1.0 - cosres;
+
+    result[0] = x*x*t + cosres;
+    result[1] = y*x*t + z*sinres;
+    result[2] = z*x*t - y*sinres;
+    result[3] = 0.0;
+
+    result[4] = x*y*t - z*sinres;
+    result[5] = y*y*t + cosres;
+    result[6] = z*y*t + x*sinres;
+    result[7] = 0.0;
+
+    result[8] = x*z*t + y*sinres;
+    result[9] = y*z*t - x*sinres;
+    result[10] = z*z*t + cosres;
+    result[11] = 0.0;
+
+    result[12] = 0.0;
+    result[13] = 0.0;
+    result[14] = 0.0;
+    result[15] = 1.0;
+
+    return result;
+}
+
 
 function  vector3Transform(v, mat) {
     
