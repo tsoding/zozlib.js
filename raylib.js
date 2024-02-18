@@ -42,7 +42,8 @@ class RaylibJs {
         this.currentPressedKeyState = new Set();
         this.currentMouseWheelMoveState = 0;
         this.currentMousePosition = {x: 0, y: 0};
-        this.images = [];
+        this.images = {};
+        this.nextTextureId = 0;
         this.quit = false;
     }
 
@@ -285,29 +286,39 @@ class RaylibJs {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const filename = cstr_by_ptr(buffer, filename_ptr);
 
-        var result = new Uint32Array(buffer, result_ptr, 5)
         var img = new Image();
+
+        const id = this.nextTextureId++;
+        img.dataset.textureId = id;
+
+        img.addEventListener("load", () => {
+            this.images[img.dataset.textureId] = img;
+        });
         img.src = filename;
-        this.images.push(img);
 
-        result[0] = this.images.indexOf(img);
-        // TODO: get the true width and height of the image
-        result[1] = 256; // width
-        result[2] = 256; // height
-        result[3] = 1; // mipmaps
-        result[4] = 7; // format PIXELFORMAT_UNCOMPRESSED_R8G8B8A8
-
+        var result = new Uint32Array(buffer, result_ptr, 1)
+        result[0] = id;
         return result;
     }
 
     // RLAPI void DrawTexture(Texture2D texture, int posX, int posY, Color tint);
     DrawTexture(texture_ptr, posX, posY, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
-        const [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr, 5);
+        const [id] = new Uint32Array(buffer, texture_ptr, 1);
+
         // // TODO: implement tinting for DrawTexture
         // const tint = getColorFromMemory(buffer, color_ptr);
 
-        this.ctx.drawImage(this.images[id], posX, posY);
+        const image = this.images[id];
+        if(image) {
+            this.ctx.drawImage(
+                image,
+                posX - (image.naturalWidth / 2),
+                posY - (image.naturalHeight / 2),
+                image.naturalWidth,
+                image.naturalHeight
+            );
+        }
     }
 
     // TODO: codepoints are not implemented
