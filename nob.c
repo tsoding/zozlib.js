@@ -30,12 +30,12 @@ Example examples[] = {
     },
     {
         .src_path   = "./examples/tsoding_ball.c",
-        .bin_path = "./build/tsoding_ball",
+        .bin_path   = "./build/tsoding_ball",
         .wasm_path  = "./wasm/tsoding_ball.wasm",
     },
     {
         .src_path   = "./examples/tsoding_snake/tsoding_snake.c",
-        .bin_path = "./build/tsoding_snake",
+        .bin_path   = "./build/tsoding_snake",
         .wasm_path  = "./wasm/tsoding_snake.wasm",
     },
     {
