@@ -324,6 +324,7 @@ class RaylibJs {
         const [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr, 5);
         // // TODO: implement tinting for DrawTexture
         // const tint = getColorFromMemory(buffer, color_ptr);
+        [posX, posY] = this.applyCameraOffset(posX, posY);
 
         this.ctx.drawImage(this.images[id], posX, posY);
     }
@@ -362,21 +363,38 @@ class RaylibJs {
         this.ctx.font = fontSize+"px myfont";
         this.ctx.fillText(text, posX, posY + fontSize);
     }
-    
+
     // Newly added
     BeginMode2D(camera_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
-        const [offsetX, offsetY, targetX, targetY, rotation, zoom] = new Float32Array(buffer, camera_ptr, 6);
-        if (rotation !== 0) throw Error("Rotation not yet supported");
-        if (zoom !== 1) throw Error("Zoom not yet supported");
+        let [offsetX, offsetY, targetX, targetY, rotation, zoom] = new Float32Array(buffer, camera_ptr, 6);
+        
+        //save the current context to restore in EndMode2D    
+        this.ctx.save();
+        
+        //zoom and rotate around center so translate to half canvas width
+        this.ctx.translate(this.ctx.canvas.width/2.0,this.ctx.canvas.height/2.0);
+        //now offset the offsetX and Y with that half to the other side
+        offsetX = offsetX - (this.ctx.canvas.width/2.0);
+        offsetY = offsetY - (this.ctx.canvas.height/2.0);
+        
+        if (rotation) {
+            //set the rotation
+            let angle = rotation * (Math.PI / 180);
+            this.ctx.rotate(angle);
+        }
+        if (zoom !== 1) {
+            this.ctx.scale(zoom, zoom);
+        }
         
         this.camera2D = [offsetX, offsetY, targetX, targetY, rotation, zoom];     
     }
     
     EndMode2D() {
         this.camera2D = undefined;
+        this.ctx.restore(); //restore the saved position;
     }
-    
+
     DrawCircle(posX, posY, radius, color_ptr)
     {
         const buffer = this.wasm.instance.exports.memory.buffer;
@@ -389,7 +407,29 @@ class RaylibJs {
         this.ctx.fill();
         
     }
+
+    DrawLine(startX, startY, endX, endY, color_ptr) {        
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
+        [startX, startY] = this.applyCameraOffset(startX, startY); 
+        [endX, endY] = this.applyCameraOffset(endX, endY); 
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = color;
+        this.ctx.moveTo(startX, startY);
+        this.ctx.lineTo(endX, endY);
+        this.ctx.stroke();
+        
+        
+    }
     
+    DrawRectangleLines(posX, posY, width, height, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
+        [posX, posY] = this.applyCameraOffset(posX, posY);
+        this.ctx.strokeStyle = color;
+        this.ctx.strokeRect(posX, posY, width, height);
+    }
+
     GetWorldToScreen2D(result_ptr, position_ptr, camera_ptr) {//COPY PASTE TO BELOW
         const buffer = this.wasm.instance.exports.memory.buffer;
         let [posX, posY] = new Float32Array(buffer, position_ptr, 2);
@@ -402,6 +442,7 @@ class RaylibJs {
         //return
         new Float32Array(buffer, result_ptr, 2).set([posX, posY]);
     }
+
     GetScreenToWorld2D(result_ptr, position_ptr, camera_ptr) { //COPY PASTE FROM ABOVE
         const buffer = this.wasm.instance.exports.memory.buffer;
         let [posX, posY] = new Float32Array(buffer, position_ptr, 2);
@@ -414,6 +455,10 @@ class RaylibJs {
         
         //return
         new Float32Array(buffer, result_ptr, 2).set([posX, posY]);
+    }
+
+    GetRandomValue(min, max) {
+        return Math.floor(Math.random() * (max - min) ) + min;
     }
     //End newly added
 
