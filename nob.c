@@ -24,6 +24,11 @@ Example examples[] = {
         .wasm_path  = "./wasm/core_input_keys.wasm",
     },
     {
+        .src_path   = "./examples/core_input_mouse.c",
+        .bin_path   = "./build/core_input_mouse",
+        .wasm_path  = "./wasm/core_input_mouse.wasm",
+    },
+    {
         .src_path   = "./examples/shapes_colors_palette.c",
         .bin_path   = "./build/shapes_colors_palette",
         .wasm_path  = "./wasm/shapes_colors_palette.wasm",
