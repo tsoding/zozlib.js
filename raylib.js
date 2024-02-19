@@ -136,6 +136,10 @@ class RaylibJs {
         return Math.min(this.dt, 1.0/this.targetFPS);
     }
 
+    GetRandomValue(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
     BeginDrawing() {}
 
     EndDrawing() {
