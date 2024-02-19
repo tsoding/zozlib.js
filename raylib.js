@@ -117,6 +117,8 @@ class RaylibJs {
         return false;
     }
 
+    CloseWindow() {}
+
     SetTargetFPS(fps) {
         console.log(`The game wants to run at ${fps} FPS, but in Web we gonna just ignore it.`);
         this.targetFPS = fps;
