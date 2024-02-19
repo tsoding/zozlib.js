@@ -48,6 +48,11 @@ Example examples[] = {
         .bin_path   = "./build/text_writing_anim",
         .wasm_path  = "./wasm/text_writing_anim.wasm",
     },
+    {
+        .src_path   = "./examples/shapes_following_eyes.c",
+        .bin_path   = "./build/shapes_following_eyes",
+        .wasm_path  = "./wasm/shapes_following_eyes.wasm",
+    },
 };
 
 bool build_native(void)
@@ -60,6 +65,7 @@ bool build_native(void)
         nob_cmd_append(&cmd, "-L./lib/", "-lraylib", "-lm");
         if (!nob_cmd_run_sync(cmd)) return 1;
     }
+    return 0;
 }
 
 bool build_wasm(void)
@@ -81,6 +87,7 @@ bool build_wasm(void)
         nob_cmd_append(&cmd, "-DPLATFORM_WEB");
         if (!nob_cmd_run_sync(cmd)) return 1;
     }
+    return 0;
 }
 
 int main(int argc, char **argv)
