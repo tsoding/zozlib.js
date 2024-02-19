@@ -344,6 +344,45 @@ class RaylibJs {
         this.ctx.fillText(text, posX, posY + fontSize);
     }
 
+    DrawFPS(x, y){
+      // TODO: implement DrawFPS
+    }
+
+    CheckCollisionCircles(center1_ptr, radius1, center2_ptr, radius2) {
+      const buffer = this.wasm.instance.exports.memory.buffer;
+      const [c1x, c1y] = new Float32Array(buffer, center1_ptr, 2);
+      const [c2x, c2y] = new Float32Array(buffer, center2_ptr, 2);
+
+      var collision = false;
+
+      var dx = c2x - c1x; // X distance between centers
+      var dy = c2y - c1y; // Y distance between centers
+  
+      var distance = Math.sqrt(dx*dx + dy*dy); // Distance between centers
+  
+      if (distance <= (radius1 + radius2)) collision = true;
+  
+      return collision;
+    }
+
+    CheckCollisionPointCircle(point_ptr, center_ptr, radius) {
+      var collision = false;
+      collision = this.CheckCollisionCircles(point_ptr, 0, center_ptr, radius);
+      return collision;
+    }
+
+    atan2f(x, y) {
+      return Math.atan2(x, y);
+    }
+
+    cosf(x) {
+      return Math.cos(x);
+    }
+
+    sinf(x) {
+      return Math.sin(x);
+    }
+
     raylib_js_set_entry(entry) {
         this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);
     }
