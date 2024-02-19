@@ -198,7 +198,7 @@ class RaylibJs {
     }
 
     IsMouseButtonPressed(button){
-        return this.currentMouseButton == button;
+        return this.currentMouseButton == raylibMOuseButtonMapping[button];
      }
     GetMouseWheelMove() {
       return this.currentMouseWheelMoveState;
@@ -357,6 +357,16 @@ class RaylibJs {
     raylib_js_set_entry(entry) {
         this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);
     }
+}
+
+const raylibMOuseButtonMapping = {
+    0: 0,
+    1: 2,
+    2: 1,
+    3: 3,
+    4: 4,
+    5: 5,
+    6: 6,
 }
 
 const glfwKeyMapping = {
