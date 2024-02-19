@@ -99,6 +99,7 @@
                 if (raylibJs !== undefined) {
                     raylibJs.stop();
                 }
+                raylibExampleSelect.blur();
                 raylibJs = new RaylibJs();
                 raylibJs.start({
                     wasmPath: `wasm/${selectedWasm}.wasm`,
