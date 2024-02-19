@@ -48,6 +48,11 @@ Example examples[] = {
         .bin_path   = "./build/text_writing_anim",
         .wasm_path  = "./wasm/text_writing_anim.wasm",
     },
+    {
+        .src_path   = "./examples/tetris.c",
+        .bin_path   = "./build/tetris",
+        .wasm_path  = "./wasm/tetris.wasm",
+    },
 };
 
 bool build_native(void)
