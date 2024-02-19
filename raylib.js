@@ -189,8 +189,9 @@ class RaylibJs {
 
         this.ctx.beginPath();
 
-        this.ctx.moveTo(startX, startY);
-        this.ctx.lineTo(endX, endY);
+        // Add 0.5 for sharp lines: http://diveintohtml5.info/canvas.html#pixel-madness
+        this.ctx.moveTo(startX + 0.5, startY + 0.5);
+        this.ctx.lineTo(endX + 0.5, endY + 0.5);
 
         this.ctx.strokeStyle = color;
         this.ctx.lineWidth = 1;
