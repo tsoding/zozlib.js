@@ -182,6 +182,22 @@ class RaylibJs {
         }
     }
 
+    // RLAPI void DrawLine(int startPosX, int startPosY, int endPosX, int endPosY, Color color);                // Draw a line
+    DrawLine(startX, startY, endX, endY, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
+
+        this.ctx.beginPath();
+
+        this.ctx.moveTo(startX, startY);
+        this.ctx.lineTo(endX, endY);
+
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 1;
+
+        this.ctx.stroke();
+    }
+
     // RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
     DrawRectangle(posX, posY, width, height, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
