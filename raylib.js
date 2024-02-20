@@ -197,10 +197,20 @@ class RaylibJs {
         return false;
     }
 
-    TextFormat(... args){ 
-        // TODO: Implement printf style formatting for TextFormat
-        return args[0];
+    TextFormat(text_ptr, args_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const fmt_text = cstr_fmt_by_ptr(buffer, text_ptr, args_ptr);
+
+        // REVIEW: Is it safe to use the slots in memory buffer starting from 0?
+        // Is there any way to create a internal shared buffer that can be shared with wasm?
+        const bytes = new Uint8Array(buffer, 0, fmt_text.length + 1);
+        for (let i = 0; i < fmt_text.length; i++) {
+            bytes[i] = fmt_text.charCodeAt(i);
+        }
+        bytes[fmt_text.length] = 0;
+        return bytes;
     }
+
 
     TraceLog(logLevel, text_ptr, ... args) {
         // TODO: Implement printf style formatting for TraceLog
@@ -473,39 +483,3 @@ const glfwKeyMapping = {
     //  GLFW_KEY_LAST   GLFW_KEY_MENU
 }
 
-function cstrlen(mem, ptr) {
-    let len = 0;
-    while (mem[ptr] != 0) {
-        len++;
-        ptr++;
-    }
-    return len;
-}
-
-function cstr_by_ptr(mem_buffer, ptr) {
-    const mem = new Uint8Array(mem_buffer);
-    const len = cstrlen(mem, ptr);
-    const bytes = new Uint8Array(mem_buffer, ptr, len);
-    return new TextDecoder().decode(bytes);
-}
-
-function color_hex_unpacked(r, g, b, a) {
-    r = r.toString(16).padStart(2, '0');
-    g = g.toString(16).padStart(2, '0');
-    b = b.toString(16).padStart(2, '0');
-    a = a.toString(16).padStart(2, '0');
-    return "#"+r+g+b+a;
-}
-
-function color_hex(color) {
-    const r = ((color>>(0*8))&0xFF).toString(16).padStart(2, '0');
-    const g = ((color>>(1*8))&0xFF).toString(16).padStart(2, '0');
-    const b = ((color>>(2*8))&0xFF).toString(16).padStart(2, '0');
-    const a = ((color>>(3*8))&0xFF).toString(16).padStart(2, '0');
-    return "#"+r+g+b+a;
-}
-
-function getColorFromMemory(buffer, color_ptr) {
-    const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
-    return color_hex_unpacked(r, g, b, a);
-}
