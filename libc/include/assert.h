@@ -12,8 +12,12 @@ void _assert(const char *message, const char *file, unsigned line);
 #endif
 
 #ifdef ASSERT_IMPL
-#include <stdlib.h>
-#include <stdio.h>
+
+#define assert(expression) (void)((!!(expression)) || \
+                                  (_assert(#expression, __FILE__, (unsigned)(__LINE__)), 0))
+
+// #include <stdlib.h>
+// #include <stdio.h>
 
 void exit(int);
 int printf(const char *, ...);
@@ -23,9 +27,6 @@ void _assert(const char *message, const char *file, unsigned line)
   exit(1);
 }
 #endif
-
-#define assert(expression) (void)((!!(expression)) || \
-                                  (_assert(#expression, __FILE__, (unsigned)(__LINE__)), 0))
 
 #endif
 

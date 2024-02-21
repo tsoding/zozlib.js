@@ -54,7 +54,7 @@ class RaylibJs {
         this.math = new MathJs();
         this.stdlib = new StdlibJs();
         this.stdio = new StdioJs();
-        this.time = new TimeJs();
+        this.time_js = new TimeJs();
     }
 
     constructor() {
@@ -78,7 +78,7 @@ class RaylibJs {
         }
 
         this.wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
-            env: make_environment(this, this.math, this.stdlib, this.stdio, this.time)
+            env: make_environment(this, this.math, this.stdlib, this.stdio, this.time_js)
         });
 
         // Init libc
@@ -87,7 +87,7 @@ class RaylibJs {
             this.entryFunction = js_fn;
         });
         this.stdio.init(this.wasm);
-        this.time.init(this.wasm);
+        this.time_js.init(this.wasm);
 
         const keyDown = (e) => {
             this.currentPressedKeyState.add(glfwKeyMapping[e.code]);

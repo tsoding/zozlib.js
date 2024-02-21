@@ -7,8 +7,8 @@
 
 #define CLOCKS_PER_SEC 1000
 
-typedef unsigned int clock_t;
-typedef unsigned int time_t;
+typedef long long clock_t;
+typedef long long time_t;
 typedef struct tm tm;
 
 // DECLARATIONS
@@ -101,14 +101,14 @@ char *asctime(const struct tm *time_ptr)
   int res = sprintf(str, "%.3s %.3s %.2d %.2d:%.2d:%.2d %.4d\n%c",
                     week_days[time_ptr->tm_wday],
                     months[time_ptr->tm_mon],
-                    time_ptr->tm_mon,
+                    time_ptr->tm_mday,
                     time_ptr->tm_hour + (time_ptr->tm_isdst > 0 ? 1 : 0),
                     time_ptr->tm_min,
                     time_ptr->tm_sec,
                     1900 + time_ptr->tm_year,
                     '\0');
 
-  if (res != 8)
+  if (res != 26)
     return (char *)NULL;
 
   return str;
@@ -119,19 +119,19 @@ char *ctime(const time_t *timer)
   return asctime(localtime(timer));
 }
 struct tm __gm_time_tm = {0};
-int _get_year(int);
-int _get_month(int);
-int _get_day(int);
-int _get_day_of_month(int);
-int _get_days_since_year(int);
-int _get_hours(int);
-int _get_minutes(int);
-int _get_seconds(int);
+int _get_year(time_t);
+int _get_month(time_t);
+int _get_day(time_t);
+int _get_day_of_month(time_t);
+int _get_days_since_year(time_t);
+int _get_hours(time_t);
+int _get_minutes(time_t);
+int _get_seconds(time_t);
 struct tm *gmtime(const time_t *timer)
 {
   time_t timer_cpy = *timer;
 
-  __gm_time_tm.tm_year = _get_year(timer_cpy) + 70;
+  __gm_time_tm.tm_year = _get_year(timer_cpy) - 1900;
   __gm_time_tm.tm_mon = _get_month(timer_cpy);
   __gm_time_tm.tm_yday = _get_days_since_year(timer_cpy);
   __gm_time_tm.tm_mday = _get_day_of_month(timer_cpy);
@@ -143,19 +143,19 @@ struct tm *gmtime(const time_t *timer)
 
   return &__gm_time_tm;
 }
-int _get_local_year(int);
-int _get_local_month(int);
-int _get_local_day(int);
-int _get_local_day_of_month(int);
-int _get_local_days_since_year(int);
-int _get_local_hours(int);
-int _get_local_minutes(int);
-int _get_local_seconds(int);
+int _get_local_year(time_t);
+int _get_local_month(time_t);
+int _get_local_day(time_t);
+int _get_local_day_of_month(time_t);
+int _get_local_days_since_year(time_t);
+int _get_local_hours(time_t);
+int _get_local_minutes(time_t);
+int _get_local_seconds(time_t);
 struct tm *localtime(const time_t *timer)
 {
   time_t timer_cpy = *timer;
 
-  __gm_time_tm.tm_year = _get_local_year(timer_cpy) + 70;
+  __gm_time_tm.tm_year = _get_local_year(timer_cpy) - 1900;
   __gm_time_tm.tm_mon = _get_local_month(timer_cpy);
   __gm_time_tm.tm_yday = _get_local_days_since_year(timer_cpy);
   __gm_time_tm.tm_mday = _get_local_day_of_month(timer_cpy);
@@ -168,7 +168,7 @@ struct tm *localtime(const time_t *timer)
   return &__gm_time_tm;
 }
 int _get_weeks_in_year(int);
-int _get_timezone_offset(int);
+int _get_timezone_offset(time_t);
 // https://cplusplus.com/reference/ctime/strftime/
 size_t strftime(char *ptr, size_t maxsize, const char *format, const struct tm *time_ptr)
 {

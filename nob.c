@@ -64,6 +64,11 @@ Example examples[] = {
         .wasm_path  = "./wasm/libc_malloc.wasm",
     },
     {
+        .src_path   = "./examples/libc/time.c",
+        .bin_path   = "./build/libc_time",
+        .wasm_path  = "./wasm/libc_time.wasm",
+    },
+    {
         .src_path   = "./examples/libc/file.c",
         .bin_path   = "./build/libc_file",
         .wasm_path  = "./wasm/libc_file.wasm",
