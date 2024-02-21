@@ -29,6 +29,11 @@ Example examples[] = {
         .wasm_path  = "./wasm/shapes_colors_palette.wasm",
     },
     {
+        .src_path   = "./examples/shapes_colors_palette_async.c",
+        .bin_path   = "./build/shapes_colors_palette_async",
+        .wasm_path  = "./wasm/shapes_colors_palette_async.wasm",
+    },
+    {
         .src_path   = "./examples/tsoding_ball.c",
         .bin_path = "./build/tsoding_ball",
         .wasm_path  = "./wasm/tsoding_ball.wasm",
