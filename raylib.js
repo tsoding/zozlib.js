@@ -1,8 +1,13 @@
-function make_environment(env) {
+function make_environment(env, ...envs) {
     return new Proxy(env, {
         get(target, prop, receiver) {
             if (env[prop] !== undefined) {
                 return env[prop].bind(env);
+            }
+            for (var i = 0; i < envs.length; i++) {
+                if (envs[i][prop] !== undefined) {
+                    return envs[i][prop].bind(envs[i]);
+                }
             }
             return (...args) => {
                 throw new Error(`NOT IMPLEMENTED: ${prop} ${args}`);
@@ -44,6 +49,12 @@ class RaylibJs {
         this.currentMousePosition = {x: 0, y: 0};
         this.images = [];
         this.quit = false;
+
+        //libc
+        this.math = new MathJs();
+        this.stdlib = new StdlibJs();
+        this.stdio = new StdioJs();
+        this.time = new TimeJs();
     }
 
     constructor() {
@@ -67,8 +78,16 @@ class RaylibJs {
         }
 
         this.wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
-            env: make_environment(this)
+            env: make_environment(this, this.math, this.stdlib, this.stdio, this.time)
         });
+
+        // Init libc
+        this.math.init(this.wasm);
+        this.stdlib.init(this.ctx, this.wasm, (js_fn) => {
+            this.entryFunction = js_fn;
+        });
+        this.stdio.init(this.wasm);
+        this.time.init(this.wasm);
 
         const keyDown = (e) => {
             this.currentPressedKeyState.add(glfwKeyMapping[e.code]);
@@ -87,9 +106,17 @@ class RaylibJs {
         window.addEventListener("wheel", wheelMove);
         window.addEventListener("mousemove", mouseMove);
 
-        this.wasm.instance.exports.main();
+        try {
+            this.wasm.instance.exports.main();
+        } catch (e) {
+            if (!(e instanceof ExitWasmException)) {
+                throw e;
+            }
+        }
+
         const next = (timestamp) => {
             if (this.quit) {
+                this.stdlib.handle_exit();
                 this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
                 window.removeEventListener("keydown", keyDown);
                 this.#reset()
@@ -97,7 +124,16 @@ class RaylibJs {
             }
             this.dt = (timestamp - this.previous)/1000.0;
             this.previous = timestamp;
-            this.entryFunction();
+
+            try {
+                this.stdio.wait_open_files();
+                this.entryFunction();
+            } catch (e) {
+                if (!(e instanceof ExitWasmException)) {
+                    throw e;
+                }
+            }
+
             window.requestAnimationFrame(next);
         };
         window.requestAnimationFrame((timestamp) => {

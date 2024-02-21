@@ -48,6 +48,26 @@ Example examples[] = {
         .bin_path   = "./build/text_writing_anim",
         .wasm_path  = "./wasm/text_writing_anim.wasm",
     },
+    {
+        .src_path   = "./examples/libc/math.c",
+        .bin_path   = "./build/libc_math",
+        .wasm_path  = "./wasm/libc_math.wasm",
+    },
+    {
+        .src_path   = "./examples/libc/exit.c",
+        .bin_path   = "./build/libc_exit",
+        .wasm_path  = "./wasm/libc_exit.wasm",
+    },
+    {
+        .src_path   = "./examples/libc/malloc.c",
+        .bin_path   = "./build/libc_malloc",
+        .wasm_path  = "./wasm/libc_malloc.wasm",
+    },
+    {
+        .src_path   = "./examples/libc/file.c",
+        .bin_path   = "./build/libc_file",
+        .wasm_path  = "./wasm/libc_file.wasm",
+    },
 };
 
 bool build_native(void)
@@ -56,6 +76,7 @@ bool build_native(void)
     for (size_t i = 0; i < NOB_ARRAY_LEN(examples); ++i) {
         cmd.count = 0;
         nob_cmd_append(&cmd, "clang", "-I./include/");
+        nob_cmd_append(&cmd, "-includelibc/libc.h"); // for stdio compatibility
         nob_cmd_append(&cmd, "-o", examples[i].bin_path, examples[i].src_path);
         nob_cmd_append(&cmd, "-L./lib/", "-lraylib", "-lm");
         if (!nob_cmd_run_sync(cmd)) return 1;
@@ -70,11 +91,16 @@ bool build_wasm(void)
         nob_cmd_append(&cmd, "clang");
         nob_cmd_append(&cmd, "--target=wasm32");
         nob_cmd_append(&cmd, "-I./include");
+        nob_cmd_append(&cmd, "-I./libc/include");
+        nob_cmd_append(&cmd, "-includelibc/libc.h");
         nob_cmd_append(&cmd, "--no-standard-libraries");
         nob_cmd_append(&cmd, "-Wl,--export-table");
         nob_cmd_append(&cmd, "-Wl,--no-entry");
         nob_cmd_append(&cmd, "-Wl,--allow-undefined");
         nob_cmd_append(&cmd, "-Wl,--export=main");
+        nob_cmd_append(&cmd, "-Wl,--export=__heap_base", "-Wl,--export=feraiseexcept");                            // libc
+        nob_cmd_append(&cmd, "-Wl,--export=malloc");                                                               // libc
+        nob_cmd_append(&cmd, "-Wl,--export=_create_file", "-Wl,--export=setvbuf", "-Wl,--export=_set_file_ready"); // libc
         nob_cmd_append(&cmd, "-o");
         nob_cmd_append(&cmd, examples[i].wasm_path);
         nob_cmd_append(&cmd, examples[i].src_path);
