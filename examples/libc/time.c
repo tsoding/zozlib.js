@@ -21,12 +21,9 @@ void GameFrame()
   const int ch = h / 2 - (font_size / 2);
 
   time_t t = time(NULL);
-  printf("%lli\n", t);
-
   struct tm *ts = localtime(&t);
-  printf("%i\n", ts->tm_mday);
 
-  char *time_text = asctime(ts); // ctime(&t);
+  char *time_text = asctime(ts);
   sprintf(buf, "%s%c", time_text, '\0');
 
   size_t text_size = MeasureText(buf, font_size);
