@@ -201,14 +201,15 @@ class RaylibJs {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const fmt_text = cstr_fmt_by_ptr(buffer, text_ptr, args_ptr);
 
-        // REVIEW: Is it safe to use the slots in memory buffer starting from 0?
+        const heap_base = this.wasm.instance.exports.__heap_base.value;
+        // REVIEW: Is it safe to use the slots in memory buffer starting from heap_base?
         // Is there any way to create a internal shared buffer that can be shared with wasm?
-        const bytes = new Uint8Array(buffer, 0, fmt_text.length + 1);
+        const bytes = new Uint8Array(buffer, heap_base, fmt_text.length + 1);
         for (let i = 0; i < fmt_text.length; i++) {
             bytes[i] = fmt_text.charCodeAt(i);
         }
         bytes[fmt_text.length] = 0;
-        return bytes;
+        return heap_base;
     }
 
 
