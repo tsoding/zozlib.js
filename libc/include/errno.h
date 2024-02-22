@@ -91,8 +91,18 @@
 #define errno __errno_impl
 int __errno_impl;
 
+void _set_errno(int error_code);
+void _add_errno(int error_code);
+
 #ifdef ERRNO_IMPL
 int __errno_impl = 0;
+
+void _set_errno(int error_code) {
+  errno = error_code;
+}
+void _add_errno(int error_code) {
+  errno |= error_code;
+}
 #endif
 
 #endif

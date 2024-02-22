@@ -420,7 +420,9 @@ class StdlibJs {
   // INTEGER ARITHMETICS
   abs = Math.abs;
   labs = this.abs;
-  llabs = this.abs;
+  llabs = (x) => {
+    return x > 0 ? x : -x;
+  };
 
   // MULTIBYTE CHARACTERS (UTF-ONLY (LC_CTYPE=UTF-8))
   mblen = (mbc_ptr, max) => {

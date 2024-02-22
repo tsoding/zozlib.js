@@ -106,6 +106,7 @@ bool build_wasm(void)
         nob_cmd_append(&cmd, "-Wl,--export=__heap_base", "-Wl,--export=feraiseexcept");                            // libc
         nob_cmd_append(&cmd, "-Wl,--export=malloc");                                                               // libc
         nob_cmd_append(&cmd, "-Wl,--export=_create_file", "-Wl,--export=setvbuf", "-Wl,--export=_set_file_ready"); // libc
+        nob_cmd_append(&cmd, "-Wl,--export=_add_errno", "-Wl,--export=_set_errno");                                // libc
         nob_cmd_append(&cmd, "-o");
         nob_cmd_append(&cmd, examples[i].wasm_path);
         nob_cmd_append(&cmd, examples[i].src_path);
