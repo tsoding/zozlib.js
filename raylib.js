@@ -211,12 +211,20 @@ class RaylibJs {
         // const heap_end = this.wasm.instance.exports.__heap_end.value;
         const heap_ptr = heap_base + this.heapedIndex * MAX_TEXT_BUFFER_LENGTH;
 
+        // Inserting "..." at the end of the string to mark as truncated
+        if (fmt_text_len >= MAX_TEXT_BUFFER_LENGTH) {
+            fmt_text = fmt_text.substring(0, MAX_TEXT_BUFFER_LENGTH - 4) + "...";
+            fmt_text_len = fmt_text.length + 1;
+        }
+
         // TODO: Other functions still override this allocation, need to implement
         // allocator which manages the ownership of chunks.
         const bytes = new Uint8Array(buffer, heap_ptr, fmt_text_len);
         for (let i = 0; i < fmt_text.length; i++) {
             bytes[i] = fmt_text.charCodeAt(i);
         }
+
+        // Mark end with null
         bytes[fmt_text.length] = 0;
         this.heapedIndex += 1;
         if (this.heapedIndex >= MAX_TEXTFORMAT_BUFFERS) this.heapedIndex = 0;
