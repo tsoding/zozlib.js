@@ -131,17 +131,53 @@ bool __files_were_init = false;
 FILE __files[FOPEN_MAX];
 
 // STD FILES
-FILE __stderr__hold;
-bool __stderr_was_init = false;
-FILE *stderr = &__stderr__hold;
+char __stderr_buf[BUFSIZ + 1];
+FILE __stderr_hold = {
+    .used = true,
+    .error = false,
+    .eof = false,
+    .ready = true,
+    .is_writable = true,
+    .is_readable = false,
+    .buf_index = 0,
+    .buf = __stderr_buf,
+    .buf_size = BUFSIZ,
+    .mode = _IOFBF,
+    .own_buf = false,
+};
+FILE *stderr = &__stderr_hold;
 
-FILE __stdout__hold;
-bool __stdout_was_init = false;
-FILE *stdout = &__stdout__hold;
+char __stdout_buf[BUFSIZ + 1];
+FILE __stdout_hold = {
+    .used = true,
+    .error = false,
+    .eof = false,
+    .ready = true,
+    .is_writable = true,
+    .is_readable = false,
+    .buf_index = 0,
+    .buf = __stdout_buf,
+    .buf_size = BUFSIZ,
+    .mode = _IOFBF,
+    .own_buf = false,
+};
+FILE *stdout = &__stdout_hold;
 
-FILE __stdin__hold;
-bool __stdin_was_init = false;
-FILE *stdin = &__stdin__hold;
+char __stdin_buf[BUFSIZ + 1];
+FILE __stdin_hold = {
+    .used = true,
+    .error = true,
+    .eof = true,
+    .ready = false,
+    .is_writable = false,
+    .is_readable = false,
+    .buf_index = 0,
+    .buf = NULL,
+    .buf_size = BUFSIZ,
+    .mode = _IOFBF,
+    .own_buf = false,
+};
+FILE *stdin = &__stdin_hold;
 
 // BASE FNS
 FILE *_init_file(FILE *init)
@@ -187,29 +223,6 @@ FILE *_create_file()
   }
 
   return _init_file(__files + found_free);
-}
-void _init_std_file(FILE *stream)
-{
-  if (stream == stderr && !__stderr_was_init)
-  {
-    _init_file(stream);
-    __stderr_was_init = true;
-    stream->ready = true;
-    stream->is_writable = true;
-  }
-  else if (stream == stdout && !__stdout_was_init)
-  {
-    _init_file(stream);
-    __stdout_was_init = true;
-    stream->ready = true;
-    stream->is_writable = true;
-  }
-  else if (stream == stdin && !__stdin_was_init)
-  {
-    _init_file(stream);
-    __stdin_was_init = true;
-    stream->ready = true;
-  }
 }
 void _set_file_ready(FILE *stream)
 {
@@ -331,7 +344,6 @@ FILE *fopen(const char *name, const char *mode)
 }
 FILE *freopen(const char *name, const char *mode, FILE *stream)
 {
-  _init_std_file(stream);
 
   if (strcmp(mode, "rb") != 0)
   {
@@ -347,7 +359,6 @@ FILE *freopen(const char *name, const char *mode, FILE *stream)
 }
 int fclose(FILE *stream)
 {
-  _init_std_file(stream);
 
   fflush(stream);
   stream->used = false;
@@ -377,7 +388,6 @@ int fclose(FILE *stream)
 // BUFFER FNS
 int fflush(FILE *stream)
 {
-  _init_std_file(stream);
 
   if (stream == NULL)
   {
@@ -398,7 +408,6 @@ int fflush(FILE *stream)
 }
 void setbuf(FILE *stream, char *buffer)
 {
-  _init_std_file(stream);
 
   free(stream->buf);
   stream->buf_size = BUFSIZ;
@@ -407,7 +416,6 @@ void setbuf(FILE *stream, char *buffer)
 }
 void setvbuf(FILE *stream, char *buffer, int mode, size_t size)
 {
-  _init_std_file(stream);
 
   if (stream->own_buf)
   {
@@ -429,8 +437,34 @@ void setvbuf(FILE *stream, char *buffer, int mode, size_t size)
 
   if (buffer == NULL)
   {
-    stream->buf = (char *)malloc(size + 1);
-    stream->own_buf = true;
+    if (size <= BUFSIZ)
+    {
+      if (stream == stderr)
+      {
+        stream->buf = __stderr_buf;
+        stream->own_buf = false;
+      }
+      else if (stream == stdout)
+      {
+        stream->buf = __stdout_buf;
+        stream->own_buf = false;
+      }
+      else if (stream == stdin)
+      {
+        stream->buf = __stdin_buf;
+        stream->own_buf = false;
+      }
+      else
+      {
+        stream->buf = (char *)malloc(size + 1);
+        stream->own_buf = true;
+      }
+    }
+    else
+    {
+      stream->buf = (char *)malloc(size + 1);
+      stream->own_buf = true;
+    }
   }
   else
   {
@@ -443,7 +477,6 @@ void setvbuf(FILE *stream, char *buffer, int mode, size_t size)
 // CHARACTER INPUT/OUTPUT
 int fgetc(FILE *stream)
 {
-  _init_std_file(stream);
 
   if (stream == stderr || stream == stdout)
   {
@@ -489,7 +522,6 @@ char *fgets(char *str, int max_size, FILE *stream)
 }
 int fputc(int character, FILE *stream)
 {
-  _init_std_file(stream);
 
   if (stream->is_writable)
   {
@@ -604,7 +636,6 @@ size_t fwrite(const void *buffer, size_t size, size_t count, FILE *stream)
 // FILE POSITIONING
 int fgetpos(FILE *stream, fpos_t *pos)
 {
-  _init_std_file(stream);
 
   if (stream->is_readable)
   {
@@ -624,7 +655,6 @@ int fgetpos(FILE *stream, fpos_t *pos)
 }
 int fseek(FILE *stream, long int offset, int origin)
 {
-  _init_std_file(stream);
 
   if (stream->is_readable)
   {
@@ -672,7 +702,6 @@ int fseek(FILE *stream, long int offset, int origin)
 }
 int fsetpos(FILE *stream, const fpos_t *pos)
 {
-  _init_std_file(stream);
 
   if (stream->is_readable)
   {
@@ -686,7 +715,6 @@ int fsetpos(FILE *stream, const fpos_t *pos)
 }
 long int ftell(FILE *stream)
 {
-  _init_std_file(stream);
 
   if (stream->is_readable)
   {
@@ -700,7 +728,6 @@ long int ftell(FILE *stream)
 }
 void rewind(FILE *stream)
 {
-  _init_std_file(stream);
 
   stream->eof = false;
   stream->error = false;
