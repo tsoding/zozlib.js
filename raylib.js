@@ -51,10 +51,6 @@ class RaylibJs {
         this.#reset();
     }
     
-    get quit() {
-      return this.views.stop[0] !== 0;
-    }
-
     async start({wasmPath, shared}) {
         if (this.wasm !== undefined) {
             console.error("The game is already running. Please stop() it first.");
@@ -91,18 +87,6 @@ class RaylibJs {
         this.CloseWindow();
     }
 
-    get currentMouseWheelMoveState() {
-        return Math.sign(-this.views.mouse[2]);
-    }
-
-    set currentMouseWheelMoveState(v) {
-        this.views.mouse[2] = v;
-    } 
-
-    get currentMousePosition() {
-        return { x: this.views.mouse[0], y: this.views.mouse[1] };
-    }
-
     InitWindow(width, height, title_ptr) {
         this.ctx.canvas.width = width;
         this.ctx.canvas.height = height;
@@ -111,7 +95,7 @@ class RaylibJs {
     }
 
     WindowShouldClose() {
-        return this.quit;
+        return this.views.stop[0] !== 0;
     }
     
     CloseWindow() {
@@ -147,7 +131,7 @@ class RaylibJs {
 
     EndDrawing() {
         this.prevKeys.set(this.views.keys);
-        this.currentMouseWheelMoveState = 0.0;
+        this.views.mouse[2] = 0.0;
         const img = this.ctx.canvas.transferToImageBitmap();
         this.ctx.drawImage(img, 0, 0);
         reply("frame", img);
@@ -207,7 +191,7 @@ class RaylibJs {
     }
 
     GetMouseWheelMove() {
-      return this.currentMouseWheelMoveState;
+      return Math.sign(-this.views.mouse[2]);
     }
     IsGestureDetected() {
         return false;
@@ -236,8 +220,8 @@ class RaylibJs {
 
     GetMousePosition(result_ptr) {
         const bcrect = this.views.boundingRect;
-        const x = this.currentMousePosition.x - bcrect[0];
-        const y = this.currentMousePosition.y - bcrect[1];
+        const x = this.views.mouse[0] - bcrect[0];
+        const y = this.views.mouse[1] - bcrect[1];
 
         const buffer = this.wasm.instance.exports.memory.buffer;
         new Float32Array(buffer, result_ptr, 2).set([x, y]);
