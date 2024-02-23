@@ -47,7 +47,7 @@ class RaylibJs {
         this.currentMousePosition = {x: 0, y: 0};
         this.images = [];
         this.quit = false;
-        this.heapedIndex = 0;
+        this.textFormatBufferIndex = 0;
     }
 
     constructor() {
@@ -209,7 +209,7 @@ class RaylibJs {
         const heap_base = this.wasm.instance.exports.__heap_base.value;
         // TODO: Check if the values exceeds the heap end
         // const heap_end = this.wasm.instance.exports.__heap_end.value;
-        const heap_ptr = heap_base + this.heapedIndex * MAX_TEXT_BUFFER_LENGTH;
+        const heap_ptr = heap_base + this.textFormatBufferIndex * MAX_TEXT_BUFFER_LENGTH;
 
         // Inserting "..." at the end of the string to mark as truncated
         if (fmt_text_len >= MAX_TEXT_BUFFER_LENGTH) {
@@ -226,8 +226,8 @@ class RaylibJs {
 
         // Mark end with null
         bytes[fmt_text.length] = 0;
-        this.heapedIndex += 1;
-        if (this.heapedIndex >= MAX_TEXTFORMAT_BUFFERS) this.heapedIndex = 0;
+        this.textFormatBufferIndex += 1;
+        if (this.textFormatBufferIndex >= MAX_TEXTFORMAT_BUFFERS) this.textFormatBufferIndex = 0;
 
         return heap_ptr;
     }
