@@ -1,10 +1,17 @@
-import EventWorker from "./EventWorker.js";
 import { DataSchema } from "./SharedData.js";
 
-function setListeners(eventWorker, handlers, ctx = handlers) {
-    for (const prop in handlers) {
-        eventWorker.setListener(prop, handlers[prop].bind(ctx));
-    }
+function setListeners(/** @type {Worker} */ worker, handlers) {
+    worker.onmessage = (ev) => {
+        if ("topic" in ev.data && "data" in ev.data) {
+            if (ev.data.topic in handlers) {
+                handlers[ev.data.topic](...ev.data.data);
+            } else {
+                throw new TypeError(`No handler for ${ev.data.topic}!`);
+            }
+        } else {
+            throw new TypeError("Invalid message received!");
+        }
+    };
 }
 
 export default class RaylibJs {
@@ -18,7 +25,7 @@ export default class RaylibJs {
         }
         this.ctx = canvas.getContext("bitmaprenderer");
         if (this.worker === undefined) {
-            this.worker = new EventWorker("./raylib.js", { type: "module" });
+            this.worker = new Worker("./raylib.js", { type: "module" });
         } else {
             throw new Error("raylib.js worker already exists!");
         }
@@ -32,15 +39,11 @@ export default class RaylibJs {
         });
         this.views = DataSchema.view(shared);
         // bind listeners
-        setListeners(
-            this.worker,
-            {
-                frame: this.#onFrame,
-                window: this.#onWindow,
-                requestAnimationFrame: this.#onRequestAnimationFrame,
-            },
-            this,
-        );
+        setListeners(this.worker, {
+            frame: this.#onFrame.bind(this),
+            window: this.#onWindow.bind(this),
+            requestAnimationFrame: this.#onRequestAnimationFrame.bind(this),
+        });
         window.addEventListener("keydown", (e) => {
             const key = glfwKeyMapping[e.code];
             this.views.keys[~~(key / 8)] |= 1 << key % 8;
@@ -58,16 +61,8 @@ export default class RaylibJs {
         });
 
         // Initialize raylib.js worker
-        return new Promise((resolve) => {
-            this.worker.setListener("initialized", () => {
-                this.worker.removeListener("initialized");
-                // TODO: listen to real changss in boundingClientRect
-                console.log("initialized");
-                this.#setBoundingRect();
-                resolve();
-            });
-            this.worker.send("init", { wasmPath, shared });
-        });
+        this.#setBoundingRect();
+        this.worker.postMessage({ wasmPath, shared });
     }
 
     stop() {

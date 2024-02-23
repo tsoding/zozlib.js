@@ -1,4 +1,3 @@
-import { registerWorkerEvents, reply } from "./EventWorker.js";
 import { DataSchema } from "./SharedData.js";
 
 if (typeof importScripts !== "function") {
@@ -83,7 +82,6 @@ class RaylibJs {
         this.#wait(() => reply("requestAnimationFrame"));
         this.previous = this.views.time[0];
         this.#wait(() => reply("requestAnimationFrame"));
-        reply("initialized");
 
         this.wasm.instance.exports.main();
         // backwards compatibility
@@ -422,8 +420,10 @@ function getColorFromMemory(buffer, color_ptr) {
     return color_hex_unpacked(r, g, b, a);
 }
 
-registerWorkerEvents({
-    init(options) {
-        new RaylibJs().start(options);
-    }
-});
+onmessage = (ev) => {
+  new RaylibJs().start(ev.data);
+}
+
+function reply(topic, ...data) {
+  postMessage({topic, data});
+}
