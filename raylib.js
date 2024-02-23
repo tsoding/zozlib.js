@@ -21,6 +21,9 @@ const LOG_ERROR   = iota++; // Error logging, used on unrecoverable failures
 const LOG_FATAL   = iota++; // Fatal logging, used to abort program: exit(EXIT_FAILURE)
 const LOG_NONE    = iota++; // Disable logging
 
+const MAX_TEXTFORMAT_BUFFERS = 4;
+const MAX_TEXT_BUFFER_LENGTH = 1024;
+
 class RaylibJs {
     // TODO: We stole the font from the website
     // (https://raylib.com/) and it's slightly different than
@@ -44,6 +47,7 @@ class RaylibJs {
         this.currentMousePosition = {x: 0, y: 0};
         this.images = [];
         this.quit = false;
+        this.heapedIndex = 0;
     }
 
     constructor() {
@@ -200,16 +204,24 @@ class RaylibJs {
     TextFormat(text_ptr, args_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const fmt_text = cstr_fmt_by_ptr(buffer, text_ptr, args_ptr);
+        const fmt_text_len = fmt_text.length + 1;
 
         const heap_base = this.wasm.instance.exports.__heap_base.value;
-        // REVIEW: Is it safe to use the slots in memory buffer starting from heap_base?
-        // Is there any way to create a internal shared buffer that can be shared with wasm?
-        const bytes = new Uint8Array(buffer, heap_base, fmt_text.length + 1);
+        // TODO: Check if the values exceeds the heap end
+        // const heap_end = this.wasm.instance.exports.__heap_end.value;
+        const heap_ptr = heap_base + this.heapedIndex * MAX_TEXT_BUFFER_LENGTH;
+
+        // TODO: Other functions still override this allocation, need to implement
+        // allocator which manages the ownership of chunks.
+        const bytes = new Uint8Array(buffer, heap_ptr, fmt_text_len);
         for (let i = 0; i < fmt_text.length; i++) {
             bytes[i] = fmt_text.charCodeAt(i);
         }
         bytes[fmt_text.length] = 0;
-        return heap_base;
+        this.heapedIndex += 1;
+        if (this.heapedIndex >= MAX_TEXTFORMAT_BUFFERS) this.heapedIndex = 0;
+
+        return heap_ptr;
     }
 
 
