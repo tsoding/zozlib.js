@@ -60,15 +60,15 @@
     </style>
     <!-- Hack for GitHub Pages found on https://github.com/orgs/community/discussions/13309#discussioncomment-3844940 -->
     <script src="enable-threads.js"></script>
-    <script src="raylib-wrapper.js"></script>
 </head>
 <body>
     <label for="raylib-example-select">Choose an Example:</label>
-        <select id="raylib-example-select" onchange="startRaylib(this.value)">
+        <select id="raylib-example-select">
         <!-- This is populated by js -->
         </select>
     <canvas id="game"></canvas>
-    <script>
+    <script type="module">
+        import RaylibJs from "./raylib-wrapper.js";
         const wasmPaths = {
             "tsoding": ["tsoding_ball", "tsoding_snake",],
             "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel",],
@@ -87,6 +87,7 @@
             }
             raylibExampleSelect.innerHTML += "</optgroup>"
         }
+        raylibExampleSelect.onchange = (ev) => startRaylib(ev.currentTarget.value);
 
         const { protocol } = window.location;
         const isHosted = protocol !== "file:";

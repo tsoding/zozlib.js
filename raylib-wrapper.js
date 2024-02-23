@@ -1,10 +1,13 @@
-let frameCounter = 0;
+import EventWorker from "./EventWorker.js";
+import { DataSchema } from "./SharedData.js";
+
 function setListeners(eventWorker, handlers, ctx = handlers) {
     for (const prop in handlers) {
         eventWorker.setListener(prop, handlers[prop].bind(ctx));
     }
 }
-class RaylibJs {
+
+export default class RaylibJs {
     async start({ wasmPath, canvasId }) {
         /** @type {HTMLCanvasElement} */
         const canvas = document.getElementById(canvasId);
@@ -15,21 +18,19 @@ class RaylibJs {
         }
         this.ctx = canvas.getContext("bitmaprenderer");
         if (this.worker === undefined) {
-            this.worker = new (await import("./EventWorker.js")).default(
-                "./raylib.js",
-                { type: "module" },
-            );
+            this.worker = new EventWorker("./raylib.js", { type: "module" });
         } else {
             throw new Error("raylib.js worker already exists!");
         }
-
-        this.buffer = new SharedArrayBuffer(20);
-        const keys = new SharedArrayBuffer(GLFW_KEY_LAST + 1);
-        const mouse = new SharedArrayBuffer(4 * 3);
-        const boundingRect = new SharedArrayBuffer(4 * 4);
-        this.keys = new Uint8Array(keys);
-        this.mouse = new Float32Array(mouse);
-        this.boundingRect = new Float32Array(boundingRect);
+        const shared = DataSchema.build({
+            asyncFlag: "i32",
+            time: "f64",
+            stop: "u8",
+            keys: ["u8", GLFW_KEY_LAST + 1],
+            mouse: ["f32", 3],
+            boundingRect: ["f32", 4],
+        });
+        this.views = DataSchema.view(shared);
         // bind listeners
         setListeners(
             this.worker,
@@ -42,18 +43,18 @@ class RaylibJs {
         );
         window.addEventListener("keydown", (e) => {
             const key = glfwKeyMapping[e.code];
-            this.keys[~~(key / 8)] |= 1 << key % 8;
+            this.views.keys[~~(key / 8)] |= 1 << key % 8;
         });
         window.addEventListener("keyup", (e) => {
             const key = glfwKeyMapping[e.code];
-            this.keys[~~(key / 8)] &= ~(1 << key % 8);
+            this.views.keys[~~(key / 8)] &= ~(1 << key % 8);
         });
         window.addEventListener("mousemove", (e) => {
-            this.mouse[0] = e.clientX;
-            this.mouse[1] = e.clientY;
+            this.views.mouse[0] = e.clientX;
+            this.views.mouse[1] = e.clientY;
         });
         window.addEventListener("wheel", (e) => {
-            this.mouse[2] = e.deltaY;
+            this.views.mouse[2] = e.deltaY;
         });
 
         // Initialize raylib.js worker
@@ -65,18 +66,12 @@ class RaylibJs {
                 this.#setBoundingRect();
                 resolve();
             });
-            this.worker.send("init", {
-                wasmPath,
-                buffer: this.buffer,
-                keys,
-                mouse,
-                boundingRect,
-            });
+            this.worker.send("init", { wasmPath, shared });
         });
     }
 
     stop() {
-        new Uint8Array(this.buffer, this.buffer.byteLength - 1, 1).set([1]);
+        this.views.stop.set([1]);
         // TODO: gracefully shut down
         this.worker.terminate();
     }
@@ -95,20 +90,24 @@ class RaylibJs {
 
     #onRequestAnimationFrame() {
         requestAnimationFrame((timestamp) => {
-            new Float64Array(this.buffer, 8, 1).set([timestamp]);
+            this.views.time.set([timestamp]);
             this.#wake();
         });
     }
 
     #wake() {
-        const flag = new Int32Array(this.buffer, 0, 1);
-        Atomics.store(flag, 0, 1);
-        Atomics.notify(flag, 0);
+        Atomics.store(this.views.asyncFlag, 0, 1);
+        Atomics.notify(this.views.asyncFlag, 0);
     }
 
     #setBoundingRect() {
         const rect = this.ctx.canvas.getBoundingClientRect();
-        this.boundingRect.set([rect.left, rect.top, rect.width, rect.height]);
+        this.views.boundingRect.set([
+            rect.left,
+            rect.top,
+            rect.width,
+            rect.height,
+        ]);
     }
 }
 

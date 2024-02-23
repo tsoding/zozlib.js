@@ -1,4 +1,5 @@
 import { registerWorkerEvents, reply } from "./EventWorker.js";
+import { DataSchema } from "./SharedData.js";
 
 if (typeof importScripts !== "function") {
     throw new Error("raylib.js should be run in a Worker!");
@@ -44,11 +45,7 @@ class RaylibJs {
         this.dt = undefined;
         this.targetFPS = 60;
         this.entryFunction = undefined;
-        this.prevKeys = new Uint8Array(0);
-        this.keys = new Uint8Array(0);
-        this.mouse = new Float32Array(3);
         this.images = [];
-        this.boundingRect = new Float32Array(4);
     }
 
     constructor() {
@@ -56,23 +53,17 @@ class RaylibJs {
     }
     
     get quit() {
-      return new Uint8Array(this.buffer, this.buffer.byteLength - 1, 1)[0] !== 0;
+      return this.views.stop[0] !== 0;
     }
 
-    async start({wasmPath, buffer, keys, mouse, boundingRect}) {
+    async start({wasmPath, shared}) {
         if (this.wasm !== undefined) {
             console.error("The game is already running. Please stop() it first.");
             return;
         }
-        /** @type {SharedArrayBuffer} */
-        this.buffer = buffer;
-
-        this.keys = new Uint8Array(keys);
-        this.prevKeys = new Uint8Array(this.keys.length);
-        this.mouse = new Float32Array(mouse);
-        this.boundingRect = new Float32Array(boundingRect);
-        this.asyncFlag = new Int32Array(this.buffer, 0, 1);
-        this.timeBuffer = new Float64Array(this.buffer, 8, 1);
+        /** @type {import("./raylib-wrapper.js").default["views"]} */
+        this.views = DataSchema.view(shared);
+        this.prevKeys = new Uint8Array(this.views.keys);
 
         const canvas = new OffscreenCanvas(0, 0);
         this.ctx = canvas.getContext("2d");
@@ -90,7 +81,7 @@ class RaylibJs {
         await grixel.load();
 
         this.#wait(() => reply("requestAnimationFrame"));
-        this.previous = this.timeBuffer[0];
+        this.previous = this.views.time[0];
         this.#wait(() => reply("requestAnimationFrame"));
         reply("initialized");
 
@@ -103,15 +94,15 @@ class RaylibJs {
     }
 
     get currentMouseWheelMoveState() {
-        return Math.sign(-this.mouse[2]);
+        return Math.sign(-this.views.mouse[2]);
     }
 
     set currentMouseWheelMoveState(v) {
-        this.mouse[2] = v;
+        this.views.mouse[2] = v;
     } 
 
     get currentMousePosition() {
-        return { x: this.mouse[0], y: this.mouse[1] };
+        return { x: this.views.mouse[0], y: this.views.mouse[1] };
     }
 
     InitWindow(width, height, title_ptr) {
@@ -151,13 +142,13 @@ class RaylibJs {
     }
 
     BeginDrawing() {
-        const timestamp = this.timeBuffer[0];
+        const timestamp = this.views.time[0];
         this.dt = (timestamp - this.previous)/1000.0;
         this.previous = timestamp;
     }
 
     EndDrawing() {
-        this.prevKeys.set(this.keys);
+        this.prevKeys.set(this.views.keys);
         this.currentMouseWheelMoveState = 0.0;
         const img = this.ctx.canvas.transferToImageBitmap();
         this.ctx.drawImage(img, 0, 0);
@@ -206,7 +197,7 @@ class RaylibJs {
     }
 
     IsKeyPressed(key) {
-        return !this.#isBitSet(this.prevKeys, key) && this.#isBitSet(this.keys, key);
+        return !this.#isBitSet(this.prevKeys, key) && this.IsKeyPressed(key);
     }
 
     #isBitSet(arr, place) {
@@ -214,7 +205,7 @@ class RaylibJs {
     }
 
     IsKeyDown(key) {
-        return this.#isBitSet(this.keys, key);
+        return this.#isBitSet(this.views.keys, key);
     }
 
     GetMouseWheelMove() {
@@ -246,7 +237,7 @@ class RaylibJs {
     }
 
     GetMousePosition(result_ptr) {
-        const bcrect = this.boundingRect;
+        const bcrect = this.views.boundingRect;
         const x = this.currentMousePosition.x - bcrect[0];
         const y = this.currentMousePosition.y - bcrect[1];
 
@@ -376,9 +367,9 @@ class RaylibJs {
     }
     
     #wait(cmd) {
-        Atomics.store(this.asyncFlag, 0, 0);
+        Atomics.store(this.views.asyncFlag, 0, 0);
         cmd?.();
-        Atomics.wait(this.asyncFlag, 0, 0);
+        Atomics.wait(this.views.asyncFlag, 0, 0);
     }
     
     memcpy(dest_ptr, src_ptr, count) {
