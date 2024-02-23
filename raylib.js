@@ -226,8 +226,9 @@ class RaylibJs {
 
         // Mark end with null
         bytes[fmt_text.length] = 0;
-        this.textFormatBufferIndex += 1;
-        if (this.textFormatBufferIndex >= MAX_TEXTFORMAT_BUFFERS) this.textFormatBufferIndex = 0;
+
+        // Move to next buffer for next function call
+        this.textFormatBufferIndex = (this.textFormatBufferIndex + 1) % MAX_TEXTFORMAT_BUFFERS;
 
         return heap_ptr;
     }
