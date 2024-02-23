@@ -1,9 +1,9 @@
-<!doctype html>
+<!DOCTYPE html>
 <html>
-
 <head>
     <title>Hello, Raylib!</title>
     <style>
+
         :root {
             --color-dark: #181818;
             --color-lite: #e7e7e7;
@@ -29,8 +29,9 @@
             border: 1px solid var(--color-dark);
 
             @media (prefers-color-scheme: dark) {
-                border: 1px solid var(--color-lite);
+               border: 1px solid var(--color-lite);
             }
+
         }
 
         #raylib-example-select {
@@ -51,7 +52,6 @@
         .not-hosted-msg .important {
             font-weight: bold;
         }
-
         @font-face {
             font-family: grixel;
             src: url(fonts/acme_7_wide_xtnd.woff);
@@ -59,7 +59,6 @@
     </style>
     <script src="raylib.js"></script>
 </head>
-
 <body>
     <label for="raylib-example-select">Choose an Example:</label>
     <select id="raylib-example-select" onchange="startRaylib(this.value)">
@@ -68,32 +67,32 @@
     <canvas id="game"></canvas>
     <script>
         const wasmPaths = {
-            "tsoding": ["tsoding_ball", "tsoding_snake"],
-            "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel"],
+            "tsoding": ["tsoding_ball", "tsoding_snake",],
+            "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel",],
             "shapes": ["shapes_colors_palette"],
             "text": ["text_writing_anim"],
             "textures": ["textures_logo_raylib"],
-        };
+        }
         const defaultWasm = Object.values(wasmPaths)[0][0];
 
         const raylibExampleSelect = document.getElementById("raylib-example-select");
 
-        for (const exampleCategory in wasmPaths) {
-            raylibExampleSelect.innerHTML += `<optgroup label="${exampleCategory}">`;
-            for (const example of wasmPaths[exampleCategory]) {
-                raylibExampleSelect.innerHTML += `<option>${example}</option>`;
+        for (const exampleCategory in wasmPaths){
+            raylibExampleSelect.innerHTML += `<optgroup label="${exampleCategory}">`
+            for (const example of wasmPaths[exampleCategory]){
+                raylibExampleSelect.innerHTML += `<option>${example}</option>`
             }
-            raylibExampleSelect.innerHTML += "</optgroup>";
+            raylibExampleSelect.innerHTML += "</optgroup>"
         }
 
-        const {protocol} = window.location;
+        const { protocol } = window.location;
         const isHosted = protocol !== "file:";
         let raylibJs = undefined;
 
-        function startRaylib(selectedWasm) {
+        function startRaylib(selectedWasm){
             var queryParams = new URLSearchParams(window.location.search);
             queryParams.set("example", selectedWasm);
-            history.pushState(null, null, "?" + queryParams.toString());
+            history.pushState(null, null, "?"+queryParams.toString());
             raylibExampleSelect.value = selectedWasm;
 
             if (isHosted) {
@@ -108,15 +107,15 @@
             } else {
                 window.addEventListener("load", () => {
                     document.body.innerHTML = `
-                <div class="not-hosted-msg">
-                    <div class="important">
-                        <p>Unfortunately, due to CORs restrictions, the wasm assembly cannot be fetched.</p>
-                        <p>Please navigate to this location using a web server.</p>
-                        <p>If you have Python 3 on your system you can just do:</p>
-                    </div>
-                    <code>$ python3 -m http.server 6969</code>
-                </div>
-                `;
+                        <div class="not-hosted-msg">
+                            <div class="important">
+                                <p>Unfortunately, due to CORs restrictions, the wasm assembly cannot be fetched.</p>
+                                <p>Please navigate to this location using a web server.</p>
+                                <p>If you have Python 3 on your system you can just do:</p>
+                            </div>
+                            <code>$ python3 -m http.server 6969</code>
+                        </div>
+                        `;
                 });
             }
         }
@@ -128,5 +127,4 @@
         else startRaylib(defaultWasm);
     </script>
 </body>
-
 </html>
