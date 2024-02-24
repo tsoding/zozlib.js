@@ -522,19 +522,19 @@ function cstr_by_ptr(mem_buffer, ptr) {
 }
 
 function color_hex_unpacked(r, g, b, a) {
-    r = r.toString(16).padStart(2, "0");
-    g = g.toString(16).padStart(2, "0");
-    b = b.toString(16).padStart(2, "0");
-    a = a.toString(16).padStart(2, "0");
-    return "#" + r + g + b + a;
+    r = r.toString(16).padStart(2, '0');
+    g = g.toString(16).padStart(2, '0');
+    b = b.toString(16).padStart(2, '0');
+    a = a.toString(16).padStart(2, '0');
+    return "#"+r+g+b+a;
 }
 
 function color_hex(color) {
-    const r = ((color >> (0 * 8)) & 0xff).toString(16).padStart(2, "0");
-    const g = ((color >> (1 * 8)) & 0xff).toString(16).padStart(2, "0");
-    const b = ((color >> (2 * 8)) & 0xff).toString(16).padStart(2, "0");
-    const a = ((color >> (3 * 8)) & 0xff).toString(16).padStart(2, "0");
-    return "#" + r + g + b + a;
+    const r = ((color>>(0*8))&0xFF).toString(16).padStart(2, '0');
+    const g = ((color>>(1*8))&0xFF).toString(16).padStart(2, '0');
+    const b = ((color>>(2*8))&0xFF).toString(16).padStart(2, '0');
+    const a = ((color>>(3*8))&0xFF).toString(16).padStart(2, '0');
+    return "#"+r+g+b+a;
 }
 
 function getColorFromMemory(buffer, color_ptr) {
