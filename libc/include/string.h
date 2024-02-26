@@ -188,7 +188,7 @@ size_t strcspn(const char *str1, const char *str2)
     }
   }
 
-  return strlen(str1); // unreachable but fallback?
+  return strlen(str1); // unreachable
 }
 char *strerror(int errnum)
 {
@@ -503,7 +503,6 @@ char *strstr(const char *str1, const char *str2)
 }
 char *strtok(char *str, const char *delimiters)
 {
-  // As static or outside of fn?
   static char *token_string_start = (char *)NULL;
   static bool end_found = true;
 
@@ -539,7 +538,7 @@ size_t strxfrm(char *dest, const char *src, size_t num)
 {
   if (num != 0 && dest != (char *)NULL)
   {
-    // Transform src according to c locale (not mention how)
+    // Transform src according to c locale (no mention how)
     strncpy(dest, src, num);
   }
   return strlen(src);

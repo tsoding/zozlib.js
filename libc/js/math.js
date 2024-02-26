@@ -1,4 +1,6 @@
 // https=//www.gnu.org/software/libc/manual/html_node/Floating-Point-Parameters.html
+
+// DEFINES
 const FLT_RADIX = 2; // assume to always be 2 (is not for IBM 360 or derivatives)
 const FP_ILOGB0 = 1 << 31; // -2147483648
 const FP_ILOGBNAN = 1 << 31; // -2147483648

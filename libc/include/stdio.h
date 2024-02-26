@@ -109,7 +109,6 @@ void perror(const char *buf);
 
 // TYPES
 
-// if file is not stdout or stderr buf is assumed to contain the whole file
 struct FILE
 {
   bool used;
@@ -121,7 +120,7 @@ struct FILE
   bool is_readable;
 
   size_t buf_index;
-  char *buf;
+  char *buf; // if file is not stdout or stderr buf is assumed to contain the whole file
   size_t buf_size;
   unsigned char mode;
   bool own_buf;
@@ -259,7 +258,7 @@ int printf(const char *format, ...)
 int vfprintf(FILE *stream, const char *format, va_list list)
 {
   int res = vsprintf(__print_buf, format, list);
-  va_end(list); // ?
+  va_end(list); // need?
 
   fputs(__print_buf, stream);
 
@@ -396,6 +395,13 @@ int fflush(FILE *stream)
     fflush(stdout);
 
     // flush others
+    for (size_t i = 0; i < sizeof(__files) / sizeof(FILE); i++)
+    {
+      if (__files[i].ready)
+      {
+        fflush(__files + i);
+      }
+    }
   }
   else
   {

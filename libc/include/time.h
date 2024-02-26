@@ -52,7 +52,6 @@ struct tm
 };
 
 #define __FIRST_LEAP_YEAR_AFTER_START 2 // 1972
-#define __STARTING_WEEK_DAY 3           // 0: monday - 6: sunday (on 01.01.1970)
 
 // TIME MANIPULATION
 double difftime(time_t end, time_t start)
@@ -62,8 +61,7 @@ double difftime(time_t end, time_t start)
 }
 time_t mktime(struct tm *time_ptr)
 {
-  const int ys1970 = time_ptr->tm_year - 70; // do this ?
-  // const int ys1970 = time_ptr->tm_year;
+  const int ys1970 = time_ptr->tm_year - 70;
 
   time_t t = 0;
   t += ys1970 * 356;
@@ -401,14 +399,14 @@ size_t strftime(char *ptr, size_t maxsize, const char *format, const struct tm *
       break;
 
       case 'Z':
-        // No support for printing time zone abbreviation
+        // TODO: No support for printing time zone abbreviation
         wi += 1;
         break;
 
       case 'E':
       case 'O':
         wi += 2;
-        // No support for local alternative representation
+        // TODO: No support for local alternative representation
         break;
 
       default:

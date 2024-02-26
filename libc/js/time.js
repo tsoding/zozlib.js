@@ -28,7 +28,6 @@ class TimeJs {
 
   // Get UTC time
   _get_year = (time_num) => {
-    // console.log(time_num)
     return this.create_date(time_num).getUTCFullYear();
   };
   _get_month = (time_num) => {

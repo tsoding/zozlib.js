@@ -1,8 +1,6 @@
 #ifndef _INC_ERRNO
 #define _INC_ERRNO
 
-// SAVE WITHOUT FORMAT VSCODE: CTRL + K CTRL + SHIFT + S
-
 #define EPERM           1
 #define ENOENT          2
 #define ESRCH           3

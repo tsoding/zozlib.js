@@ -16,9 +16,7 @@ void _assert(const char *message, const char *file, unsigned line);
 #define assert(expression) (void)((!!(expression)) || \
                                   (_assert(#expression, __FILE__, (unsigned)(__LINE__)), 0))
 
-// #include <stdlib.h>
-// #include <stdio.h>
-
+// Cannot import stdlib or stdio as it is imported by them
 void exit(int);
 int printf(const char *, ...);
 void _assert(const char *message, const char *file, unsigned line)
