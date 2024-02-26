@@ -57,6 +57,12 @@
             src: url(fonts/acme_7_wide_xtnd.woff);
         }
     </style>
+    <script src="./libc/js/fenv.js"></script>
+    <script src="./libc/js/math.js"></script>
+    <script src="./libc/js/stdlib.js"></script>
+    <script src="./libc/js/stdio.js"></script>
+    <script src="./libc/js/time.js"></script>
+
     <script src="raylib.js"></script>
 </head>
 <body>
@@ -72,6 +78,7 @@
             "shapes": ["shapes_colors_palette"],
             "text": ["text_writing_anim"],
             "textures": ["textures_logo_raylib"],
+            "libc": ["libc_math", "libc_exit", "libc_malloc", "libc_file", "libc_time"],
         }
         const defaultWasm = Object.values(wasmPaths)[0][0];
 
