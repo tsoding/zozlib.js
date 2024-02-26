@@ -107,8 +107,17 @@ class RaylibJs {
     }
 
     InitWindow(width, height, title_ptr) {
-        this.ctx.canvas.width = width;
-        this.ctx.canvas.height = height;
+        // Adjust viewport size according to screen DPI for HiDPI screens.
+        // see: https://web.dev/articles/canvas-hidipi
+        const dpi = window.devicePixelRatio || 1;
+
+        const { canvas } = this.ctx;
+        canvas.height = height * dpi;
+        canvas.width = width * dpi;
+        canvas.style.height = `${height}px`;
+        canvas.style.width = `${width}px`;
+        this.ctx.scale(dpi, dpi);
+
         const buffer = this.wasm.instance.exports.memory.buffer;
         document.title = cstr_by_ptr(buffer, title_ptr);
     }
