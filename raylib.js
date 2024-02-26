@@ -32,6 +32,9 @@ class RaylibJs {
     #FONT_SCALE_MAGIC = 0.65;
 
     #reset() {
+        this.height = 0;
+        this.width = 0;
+        this.dpi = window.devicePixelRatio || 1;
         this.previous = undefined;
         this.wasm = undefined;
         this.ctx = undefined;
@@ -109,14 +112,18 @@ class RaylibJs {
     InitWindow(width, height, title_ptr) {
         // Adjust viewport size according to screen DPI for HiDPI screens.
         // see: https://web.dev/articles/canvas-hidipi
-        const dpi = window.devicePixelRatio || 1;
-
         const { canvas } = this.ctx;
-        canvas.height = height * dpi;
-        canvas.width = width * dpi;
+        canvas.height = height * this.dpi;
+        canvas.width = width * this.dpi;
         canvas.style.height = `${height}px`;
         canvas.style.width = `${width}px`;
-        this.ctx.scale(dpi, dpi);
+        this.ctx.scale(this.dpi, this.dpi);
+
+        // Store original size for GetScreenWidth and GetScreenHeight calls.
+        // Necessary as some platforms allow fractional scaling (e.g 1.3)
+        // and dividing canvas size by DPR can cause rounding issues.
+        this.height = height;
+        this.width = width;
 
         const buffer = this.wasm.instance.exports.memory.buffer;
         document.title = cstr_by_ptr(buffer, title_ptr);
@@ -132,11 +139,11 @@ class RaylibJs {
     }
 
     GetScreenWidth() {
-        return this.ctx.canvas.width;
+        return this.width;
     }
 
     GetScreenHeight() {
-        return this.ctx.canvas.height;
+        return this.height;
     }
 
     GetFrameTime() {
