@@ -364,7 +364,6 @@ class RaylibJs {
         this.ctx.fillText(text, posX, posY + fontSize);
     }
 
-    // Newly added
     BeginMode2D(camera_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         let [offsetX, offsetY, targetX, targetY, rotation, zoom] = new Float32Array(buffer, camera_ptr, 6);
