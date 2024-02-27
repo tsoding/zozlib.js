@@ -144,15 +144,89 @@ class RaylibJs {
         this.currentMouseWheelMoveState = 0.0;
     }
 
+    // RLAPI void DrawLine(int startPosX, int startPosY, int endPosX, int endPosY, Color color);                // Draw a line
+    DrawLine(startPosX, startPosY, endPosX, endPosY, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
+        this.ctx.beginPath();
+        this.ctx.moveTo(startPosX, startPosY)
+        this.ctx.lineTo(endPosX, endPosY);
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 1;
+        this.ctx.stroke();
+    }
+
+    // RLAPI void DrawLineV(Vector2 startPos, Vector2 endPos, Color color);                                     // Draw a line (using gl lines)
+    DrawLineV(startPos_ptr, endPos_ptr, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [startPosX, startPosY] = new Float32Array(buffer, startPos_ptr, 2);
+        const [endPosX, endPosY] = new Float32Array(buffer, endPos_ptr, 2);
+        this.DrawLine(startPosX, startPosY, endPosX, endPosY, color_ptr);
+    }
+
+    // RLAPI void DrawCircle(int centerX, int centerY, float radius, Color color);                              // Draw a color-filled circle
+    DrawCircle(centerX, centerY, radius, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, radius, 0, 2*Math.PI, false);
+        this.ctx.fillStyle = color;
+        this.ctx.fill();
+    }
+
+    // RLAPI void DrawCircleV(Vector2 center, float radius, Color color);                                       // Draw a color-filled circle (Vector version)
     DrawCircleV(center_ptr, radius, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [x, y] = new Float32Array(buffer, center_ptr, 2);
-        const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
-        const color = color_hex_unpacked(r, g, b, a);
+        this.DrawCircle(x, y, radius, color_ptr);
+    }
+
+    // RLAPI void DrawCircleLines(int centerX, int centerY, float radius, Color color);                         // Draw circle outline
+    DrawCircleLines(centerX, centerY, radius, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.beginPath();
-        this.ctx.arc(x, y, radius, 0, 2*Math.PI, false);
-        this.ctx.fillStyle = color;
-        this.ctx.fill();
+        this.ctx.arc(centerX, centerY, radius, 0, 2*Math.PI, false);
+        this.ctx.strokeStyle = color;
+        this.ctx.stroke();
+    }
+
+    // RLAPI void DrawPoly(Vector2 center, int sides, float radius, float rotation, Color color);               // Draw a regular polygon (Vector version)
+    DrawPoly(center_ptr, sides, radius, rotation, color_ptr, lineThick = 0) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [centerX, centerY] = new Float32Array(buffer, center_ptr, 2);
+        const color = getColorFromMemory(buffer, color_ptr);
+        this.ctx.save();
+        this.ctx.beginPath();
+        this.ctx.translate(centerX, centerY);
+        this.ctx.rotate(rotation);
+        radius -= lineThick;
+        this.ctx.moveTo(radius, 0);
+        let angle = (Math.PI * 2) / sides;
+        for (let i = 1; i < sides; i++) {
+            this.ctx.lineTo(radius * Math.cos(angle * i), radius * Math.sin(angle * i));
+        }
+        this.ctx.closePath();
+        this.ctx.restore();
+        if (lineThick > 0) {
+            this.ctx.strokeStyle = color;
+            this.ctx.lineWidth = lineThick;
+            this.ctx.stroke();
+        }
+        else {
+            this.ctx.fillStyle = color;
+            this.ctx.fill();
+        }
+    }
+
+    // RLAPI void DrawPolyLines(Vector2 center, int sides, float radius, float rotation, Color color);          // Draw a polygon outline of n sides
+    DrawPolyLines(center_ptr, sides, radius, rotation, color_ptr) {
+        this.DrawPoly(center_ptr, sides, radius, rotation, color_ptr, 1);
+    }
+
+    // RLAPI void DrawPolyLinesEx(Vector2 center, int sides, float radius, float rotation, float lineThick, Color color); // Draw a polygon outline of n sides with extended parameters
+    DrawPolyLinesEx(center_ptr, sides, radius, rotation, lineThick, color_ptr) {
+        this.DrawPoly(center_ptr, sides, radius, rotation, color_ptr, lineThick);
     }
 
     ClearBackground(color_ptr) {
@@ -182,6 +256,34 @@ class RaylibJs {
         const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.fillStyle = color;
         this.ctx.fillRect(posX, posY, width, height);
+    }
+
+    // RLAPI void DrawTriangle(Vector2 v1, Vector2 v2, Vector2 v3, Color color);                                // Draw a color-filled triangle (vertex in counter-clockwise order!)
+    DrawTriangle(v1_ptr, v2_ptr, v3_ptr, color_ptr, lines = false) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [v1_x, v1_y] = new Float32Array(buffer, v1_ptr, 2);
+        const [v2_x, v2_y] = new Float32Array(buffer, v2_ptr, 2);
+        const [v3_x, v3_y] = new Float32Array(buffer, v3_ptr, 2);
+        const color = getColorFromMemory(buffer, color_ptr);
+        this.ctx.beginPath();
+        this.ctx.moveTo(v1_x, v1_y);
+        this.ctx.lineTo(v2_x, v2_y);
+        this.ctx.lineTo(v3_x, v3_y);
+        this.ctx.closePath();
+        if (lines) {
+            this.ctx.strokeStyle = color;
+            this.ctx.stroke();
+        }
+        else {
+            this.ctx.fillStyle = color;
+            this.ctx.lineWidth = 1;
+            this.ctx.fill();
+        }
+    }
+
+    // RLAPI void DrawTriangleLines(Vector2 v1, Vector2 v2, Vector2 v3, Color color);                           // Draw triangle outline (vertex in counter-clockwise order!)
+    DrawTriangleLines(v1_ptr, v2_ptr, v3_ptr, color_ptr) {
+        this.DrawTriangle(v1_ptr, v2_ptr, v3_ptr, color_ptr, true);
     }
 
     IsKeyPressed(key) {
@@ -247,6 +349,14 @@ class RaylibJs {
         const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.fillStyle = color;
         this.ctx.fillRect(x, y, w, h);
+    }
+
+    DrawRectangleLines(posX, posY, width, height, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(posX, posY, width, height);
     }
 
     DrawRectangleLinesEx(rec_ptr, lineThick, color_ptr) {
