@@ -44,6 +44,17 @@ class RaylibJs {
         this.currentMousePosition = {x: 0, y: 0};
         this.images = [];
         this.quit = false;
+        
+        this.camera2D = undefined;
+    }
+    
+    applyCameraOffset(x, y) {
+        if (this.camera2D) {
+            const [offsetX, offsetY, targetX, targetY, rotation, zoom] = this.camera2D;
+            x += (offsetX - targetX);
+            y += (offsetY - targetY);
+        }
+        return [x, y];
     }
 
     constructor() {
@@ -146,8 +157,10 @@ class RaylibJs {
 
     DrawCircleV(center_ptr, radius, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
-        const [x, y] = new Float32Array(buffer, center_ptr, 2);
+        let [x, y] = new Float32Array(buffer, center_ptr, 2);
+        [x, y] = this.applyCameraOffset(x, y);
         const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
+        
         const color = color_hex_unpacked(r, g, b, a);
         this.ctx.beginPath();
         this.ctx.arc(x, y, radius, 0, 2*Math.PI, false);
@@ -164,7 +177,8 @@ class RaylibJs {
     DrawText(text_ptr, posX, posY, fontSize, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
-        const color = getColorFromMemory(buffer, color_ptr);
+        const color = getColorFromMemory(buffer, color_ptr);        
+        [posX, posY] = this.applyCameraOffset(posX, posY);
         fontSize *= this.#FONT_SCALE_MAGIC;
         this.ctx.fillStyle = color;
         // TODO: since the default font is part of Raylib the css that defines it should be located in raylib.js and not in index.html
@@ -180,6 +194,7 @@ class RaylibJs {
     DrawRectangle(posX, posY, width, height, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const color = getColorFromMemory(buffer, color_ptr);
+        [posX, posY] = this.applyCameraOffset(posX, posY);
         this.ctx.fillStyle = color;
         this.ctx.fillRect(posX, posY, width, height);
     }
@@ -243,7 +258,8 @@ class RaylibJs {
 
     DrawRectangleRec(rec_ptr, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
-        const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
+        let [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
+        [x, y] = this.applyCameraOffset(x, y);
         const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.fillStyle = color;
         this.ctx.fillRect(x, y, w, h);
@@ -251,7 +267,9 @@ class RaylibJs {
 
     DrawRectangleLinesEx(rec_ptr, lineThick, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
-        const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
+        let [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
+        [x, y] = this.applyCameraOffset(x, y);
+
         const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.strokeStyle = color;
         this.ctx.lineWidth = lineThick;
@@ -306,6 +324,7 @@ class RaylibJs {
         const [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr, 5);
         // // TODO: implement tinting for DrawTexture
         // const tint = getColorFromMemory(buffer, color_ptr);
+        [posX, posY] = this.applyCameraOffset(posX, posY);
 
         this.ctx.drawImage(this.images[id], posX, posY);
     }
@@ -337,12 +356,110 @@ class RaylibJs {
     DrawTextEx(font, text_ptr, position_ptr, fontSize, spacing, tint_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
-        const [posX, posY] = new Float32Array(buffer, position_ptr, 2);
+        let [posX, posY] = new Float32Array(buffer, position_ptr, 2);
         const tint = getColorFromMemory(buffer, tint_ptr);
+        [posX, posY] = this.applyCameraOffset(posX, posY);
         this.ctx.fillStyle = tint;
         this.ctx.font = fontSize+"px myfont";
         this.ctx.fillText(text, posX, posY + fontSize);
     }
+
+    BeginMode2D(camera_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        let [offsetX, offsetY, targetX, targetY, rotation, zoom] = new Float32Array(buffer, camera_ptr, 6);
+        
+        //save the current context to restore in EndMode2D    
+        this.ctx.save();
+        
+        //zoom and rotate around center so translate to half canvas width
+        this.ctx.translate(this.ctx.canvas.width/2.0,this.ctx.canvas.height/2.0);
+        //now offset the offsetX and Y with that half to the other side
+        offsetX = offsetX - (this.ctx.canvas.width/2.0);
+        offsetY = offsetY - (this.ctx.canvas.height/2.0);
+        
+        if (rotation) {
+            //set the rotation
+            let angle = rotation * (Math.PI / 180);
+            this.ctx.rotate(angle);
+        }
+        if (zoom !== 1) {
+            this.ctx.scale(zoom, zoom);
+        }
+        
+        this.camera2D = [offsetX, offsetY, targetX, targetY, rotation, zoom];     
+    }
+    
+    EndMode2D() {
+        this.camera2D = undefined;
+        this.ctx.restore(); //restore the saved position;
+    }
+
+    DrawCircle(posX, posY, radius, color_ptr)
+    {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
+        const color = color_hex_unpacked(r, g, b, a);        
+        [posX, posY] = this.applyCameraOffset(posX, posY);
+        this.ctx.beginPath();
+        this.ctx.arc(posX, posY, radius, 0, 2*Math.PI, false);
+        this.ctx.fillStyle = color;
+        this.ctx.fill();
+        
+    }
+
+    DrawLine(startX, startY, endX, endY, color_ptr) {        
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
+        [startX, startY] = this.applyCameraOffset(startX, startY); 
+        [endX, endY] = this.applyCameraOffset(endX, endY); 
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = color;
+        this.ctx.moveTo(startX, startY);
+        this.ctx.lineTo(endX, endY);
+        this.ctx.stroke();
+        
+        
+    }
+    
+    DrawRectangleLines(posX, posY, width, height, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
+        [posX, posY] = this.applyCameraOffset(posX, posY);
+        this.ctx.strokeStyle = color;
+        this.ctx.strokeRect(posX, posY, width, height);
+    }
+
+    GetWorldToScreen2D(result_ptr, position_ptr, camera_ptr) {//COPY PASTE TO BELOW
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        let [posX, posY] = new Float32Array(buffer, position_ptr, 2);
+        const [offsetX, offsetY, targetX, targetY, rotation, zoom] = new Float32Array(buffer, camera_ptr, 6);
+        
+        const matCamera = getCameraMatrix2D(offsetX, offsetY, targetX, targetY, rotation, zoom);
+        
+        [posX, posY] = vector3Transform([posX, posY, 0.0], matCamera);
+        
+        //return
+        new Float32Array(buffer, result_ptr, 2).set([posX, posY]);
+    }
+
+    GetScreenToWorld2D(result_ptr, position_ptr, camera_ptr) { //COPY PASTE FROM ABOVE
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        let [posX, posY] = new Float32Array(buffer, position_ptr, 2);
+        const [offsetX, offsetY, targetX, targetY, rotation, zoom] = new Float32Array(buffer, camera_ptr, 6);
+        
+        const matCamera = getCameraMatrix2D(offsetX, offsetY, targetX, targetY, rotation, zoom);
+        const invertedCamera = matrixInvert(matCamera);
+        
+        [posX, posY] = vector3Transform([posX, posY, 0.0], invertedCamera);
+        
+        //return
+        new Float32Array(buffer, result_ptr, 2).set([posX, posY]);
+    }
+
+    GetRandomValue(min, max) {
+        return Math.floor(Math.random() * (max - min) ) + min;
+    }
+    //End newly added
 
     raylib_js_set_entry(entry) {
         this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);
@@ -508,4 +625,154 @@ function color_hex(color) {
 function getColorFromMemory(buffer, color_ptr) {
     const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
     return color_hex_unpacked(r, g, b, a);
+}
+
+//matrix functions implementation taken from raylib sourcecode
+
+function getCameraMatrix2D(offsetX, offsetY, targetX, targetY, rotation, zoom)
+{
+    const matOrigin = matrixTranslate(-targetX, -targetY, 0.0);
+    const matRotation = matrixRotate(0.0, 0.0, 1.0, rotation*(Math.PI/180.0));
+    const matScale = matrixScale(zoom, zoom, 1.0);
+    const matTranslation = matrixTranslate(offsetX, offsetY, 0.0);
+    
+    const matCamera = matrixMultiply(matrixMultiply(matOrigin, matrixMultiply(matScale, matRotation)), matTranslation);
+    return matCamera;
+}
+
+function matrixScale(x, y, z)
+{
+    return [ x, 0.0, 0.0, 0.0,
+             0.0, y, 0.0, 0.0,
+             0.0, 0.0, z, 0.0,
+             0.0, 0.0, 0.0, 1.0];
+}
+
+function matrixTranslate(x, y, z)
+{
+    return [1.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0,
+            x, y, z, 1.0]
+}
+
+function matrixMultiply(left, right) {
+    const mat = [];
+    mat[0] = left[0]*right[0] + left[1]*right[4] + left[2]*right[8] + left[3]*right[12];
+    mat[1] = left[0]*right[1] + left[1]*right[5] + left[2]*right[9] + left[3]*right[13];
+    mat[2] = left[0]*right[2] + left[1]*right[6] + left[2]*right[10] + left[3]*right[14];
+    mat[3] = left[0]*right[3] + left[1]*right[7] + left[2]*right[11] + left[3]*right[15];
+    mat[4] = left[4]*right[0] + left[5]*right[4] + left[6]*right[8] + left[7]*right[12];
+    mat[5] = left[4]*right[1] + left[5]*right[5] + left[6]*right[9] + left[7]*right[13];
+    mat[6] = left[4]*right[2] + left[5]*right[6] + left[6]*right[10] + left[7]*right[14];
+    mat[7] = left[4]*right[3] + left[5]*right[7] + left[6]*right[11] + left[7]*right[15];
+    mat[8] = left[8]*right[0] + left[9]*right[4] + left[10]*right[8] + left[11]*right[12];
+    mat[9] = left[8]*right[1] + left[9]*right[5] + left[10]*right[9] + left[11]*right[13];
+    mat[10] = left[8]*right[2] + left[9]*right[6] + left[10]*right[10] + left[11]*right[14];
+    mat[11] = left[8]*right[3] + left[9]*right[7] + left[10]*right[11] + left[11]*right[15];
+    mat[12] = left[12]*right[0] + left[13]*right[4] + left[14]*right[8] + left[15]*right[12];
+    mat[13] = left[12]*right[1] + left[13]*right[5] + left[14]*right[9] + left[15]*right[13];
+    mat[14] = left[12]*right[2] + left[13]*right[6] + left[14]*right[10] + left[15]*right[14];
+    mat[15] = left[12]*right[3] + left[13]*right[7] + left[14]*right[11] + left[15]*right[15];
+    return mat;
+}
+
+function matrixInvert(mat) {
+    const result = [];
+
+    // Cache the matrix values (speed optimization)
+    const a00 = mat[0], a01 = mat[1], a02 = mat[2], a03 = mat[3];
+    const a10 = mat[4], a11 = mat[5], a12 = mat[6], a13 = mat[7];
+    const a20 = mat[8], a21 = mat[9], a22 = mat[10], a23 = mat[11];
+    const a30 = mat[12], a31 = mat[13], a32 = mat[14], a33 = mat[15];
+
+    const b00 = a00*a11 - a01*a10;
+    const b01 = a00*a12 - a02*a10;
+    const b02 = a00*a13 - a03*a10;
+    const b03 = a01*a12 - a02*a11;
+    const b04 = a01*a13 - a03*a11;
+    const b05 = a02*a13 - a03*a12;
+    const b06 = a20*a31 - a21*a30;
+    const b07 = a20*a32 - a22*a30;
+    const b08 = a20*a33 - a23*a30;
+    const b09 = a21*a32 - a22*a31;
+    const b10 = a21*a33 - a23*a31;
+    const b11 = a22*a33 - a23*a32;
+
+    // Calculate the invert determinant (inlined to avoid double-caching)
+    const invDet = 1.0/(b00*b11 - b01*b10 + b02*b09 + b03*b08 - b04*b07 + b05*b06);
+
+    result[0] = (a11*b11 - a12*b10 + a13*b09)*invDet;
+    result[1] = (-a01*b11 + a02*b10 - a03*b09)*invDet;
+    result[2] = (a31*b05 - a32*b04 + a33*b03)*invDet;
+    result[3] = (-a21*b05 + a22*b04 - a23*b03)*invDet;
+    result[4] = (-a10*b11 + a12*b08 - a13*b07)*invDet;
+    result[5] = (a00*b11 - a02*b08 + a03*b07)*invDet;
+    result[6] = (-a30*b05 + a32*b02 - a33*b01)*invDet;
+    result[7] = (a20*b05 - a22*b02 + a23*b01)*invDet;
+    result[8] = (a10*b10 - a11*b08 + a13*b06)*invDet;
+    result[9] = (-a00*b10 + a01*b08 - a03*b06)*invDet;
+    result[10] = (a30*b04 - a31*b02 + a33*b00)*invDet;
+    result[11] = (-a20*b04 + a21*b02 - a23*b00)*invDet;
+    result[12] = (-a10*b09 + a11*b07 - a12*b06)*invDet;
+    result[13] = (a00*b09 - a01*b07 + a02*b06)*invDet;
+    result[14] = (-a30*b03 + a31*b01 - a32*b00)*invDet;
+    result[15] = (a20*b03 - a21*b01 + a22*b00)*invDet;
+
+    return result;
+}
+
+function matrixRotate(x, y, z, angle)
+{
+    const result = [];
+
+    const lengthSquared = x*x + y*y + z*z;
+
+    if ((lengthSquared != 1.0) && (lengthSquared != 0.0))
+    {
+        const ilength = 1.0/Math.sqrt(lengthSquared);
+        x *= ilength;
+        y *= ilength;
+        z *= ilength;
+    }
+
+    const sinres = Math.sin(angle);
+    const cosres = Math.cos(angle);
+    const t = 1.0 - cosres;
+
+    result[0] = x*x*t + cosres;
+    result[1] = y*x*t + z*sinres;
+    result[2] = z*x*t - y*sinres;
+    result[3] = 0.0;
+
+    result[4] = x*y*t - z*sinres;
+    result[5] = y*y*t + cosres;
+    result[6] = z*y*t + x*sinres;
+    result[7] = 0.0;
+
+    result[8] = x*z*t + y*sinres;
+    result[9] = y*z*t - x*sinres;
+    result[10] = z*z*t + cosres;
+    result[11] = 0.0;
+
+    result[12] = 0.0;
+    result[13] = 0.0;
+    result[14] = 0.0;
+    result[15] = 1.0;
+
+    return result;
+}
+
+
+function  vector3Transform(v, mat) {
+    
+    const x = v[0];
+    const y = v[1];
+    const z = v[2];
+    
+    const posX = mat[0]*x + mat[4]*y + mat[8]*z + mat[12];
+    const posY = mat[1]*x + mat[5]*y + mat[9]*z + mat[13];
+    const posZ = mat[2]*x + mat[6]*y + mat[10]*z + mat[14]; 
+    
+    return [posX, posY, posZ];
 }

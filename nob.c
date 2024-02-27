@@ -48,6 +48,11 @@ Example examples[] = {
         .bin_path   = "./build/text_writing_anim",
         .wasm_path  = "./wasm/text_writing_anim.wasm",
     },
+    {
+        .src_path   = "./examples/2d_camera_platformer.c",
+        .bin_path   = "./build/2d_camera_platformer",
+        .wasm_path  = "./wasm/2d_camera_platformer.wasm",
+    },
 };
 
 bool build_native(void)
@@ -57,7 +62,12 @@ bool build_native(void)
         cmd.count = 0;
         nob_cmd_append(&cmd, "clang", "-I./include/");
         nob_cmd_append(&cmd, "-o", examples[i].bin_path, examples[i].src_path);
+#ifdef _WIN32
+        //TODO check this Works on my Machine TM
+        nob_cmd_append(&cmd, "-L./lib/", "-lraylib", "-lopengl32", "-luser32", "-lmsvcrt", "-lgdi32", "-lshell32", "-lwinmm");
+#else
         nob_cmd_append(&cmd, "-L./lib/", "-lraylib", "-lm");
+#endif
         if (!nob_cmd_run_sync(cmd)) return 1;
     }
 }
