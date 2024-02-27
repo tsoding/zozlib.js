@@ -196,12 +196,13 @@ class RaylibJs {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [centerX, centerY] = new Float32Array(buffer, center_ptr, 2);
         const color = getColorFromMemory(buffer, color_ptr);
-        let angle = (Math.PI * 2)/sides;
         this.ctx.save();
         this.ctx.beginPath();
         this.ctx.translate(centerX, centerY);
         this.ctx.rotate(rotation);
+        radius -= lineThick;
         this.ctx.moveTo(radius, 0);
+        let angle = (Math.PI * 2) / sides;
         for (let i = 1; i < sides; i++) {
             this.ctx.lineTo(radius * Math.cos(angle * i), radius * Math.sin(angle * i));
         }
