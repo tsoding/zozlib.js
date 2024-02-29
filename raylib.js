@@ -376,7 +376,7 @@ class RaylibJs {
         result[2] = 1; // AudioStream::sampleRate
         result[3] = 1; // AudioStream::sampleSize
         result[4] = 2; // AudioStream::channels
-        result[5] = 1; // AudioStream::frameCount;
+        result[5] = 1; // Sound::frameCount;
 
         return result;
     }
