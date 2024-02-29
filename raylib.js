@@ -44,7 +44,7 @@ class RaylibJs {
         this.currentMousePosition = {x: 0, y: 0};
         this.images = [];
         this.quit = false;
-        this.sounds = [];
+        this.audio = [];
     }
 
     constructor() {
@@ -347,36 +347,35 @@ class RaylibJs {
 
     // RLAPI void InitAudioDevice(void);                                     // Initialize audio device and context
     InitAudioDevice() {
-        if (!this.sounds) {
-            this.sounds = [];
+        if (!this.audio) {
+            this.audio = [];
         }
     }
 
     // RLAPI void CloseAudioDevice(void);                                    // Close the audio device and context
     CloseAudioDevice() {
-        this.sounds = [];
+        this.audio = [];
     }
 
     // RLAPI bool IsAudioDeviceReady(void);                                  // Check if audio device has been initialized successfully
     IsAudioDeviceReady() {
-        return this.sounds && Array.isArray(this.sounds);
+        return this.audio && Array.isArray(this.audio);
     }
 
     // RLAPI Sound LoadSound(const char *fileName);                          // Load sound from file
     LoadSound(result_ptr, fileName_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const filename = cstr_by_ptr(buffer, fileName_ptr);
-
-        let result = new Uint32Array(buffer, result_ptr, 6);
         const sound = new Audio(filename);
-        this.sounds.push(sound);
+        this.audio.push(sound);
 
-        result[0] = this.sounds.length; // AudioStream::buffer
-        result[1] = 1; // AudioStream::processor
-        result[2] = 1; // AudioStream::sampleRate
-        result[3] = 1; // AudioStream::sampleSize
-        result[4] = 2; // AudioStream::channels
-        result[5] = 1; // Sound::frameCount;
+        const result = new Uint32Array(buffer, result_ptr, 6);
+        result[0] = this.audio.length; // Sound::AudioStream::buffer
+        result[1] = 1; // Sound::AudioStream::processor
+        result[2] = 1; // Sound::AudioStream::sampleRate
+        result[3] = 1; // Sound::AudioStream::sampleSize
+        result[4] = 2; // Sound::AudioStream::channels
+        result[5] = 1; // Sound::frameCount
 
         return result;
     }
@@ -385,30 +384,30 @@ class RaylibJs {
     IsSoundReady(sound_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [id, processor, sampleRate, sampleSize, channels, frameCount] = new Uint32Array(buffer, sound_ptr, 6);
-        if (id <= 0 || id > this.sounds.length) {
+        if (id <= 0 || id > this.audio.length) {
             return false;
         }
-        return this.sounds[id - 1] != null;
+        return this.audio[id - 1] != null;
     }
 
     // RLAPI void UnloadSound(Sound sound);                                  // Unload sound
     UnloadSound(sound_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [id, processor, sampleRate, sampleSize, channels, frameCount] = new Uint32Array(buffer, sound_ptr, 6);
-        if (id <= 0 || id > this.sounds.length) {
+        if (id <= 0 || id > this.audio.length) {
             return;
         }
-        this.sounds[id - 1] = null;
+        this.audio[id - 1] = null;
     }
 
     // RLAPI void PlaySound(Sound sound);                                    // Play a sound
     PlaySound(sound_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [id, processor, sampleRate, sampleSize, channels, frameCount] = new Uint32Array(buffer, sound_ptr, 6);
-        if (id <= 0 || id > this.sounds.length) {
+        if (id <= 0 || id > this.audio.length) {
             return;
         }
-        const audio = this.sounds[id - 1];
+        const audio = this.audio[id - 1];
         if (!audio) {
             return;
         }
