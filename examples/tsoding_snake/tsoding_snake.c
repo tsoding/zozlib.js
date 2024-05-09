@@ -710,6 +710,9 @@ void game_update(f32 dt)
         if (IsKeyPressed(KEY_R)) {
             game_restart(game.width, game.height);
         }
+        if ((IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)) && IsKeyPressed(KEY_ENTER)) {
+            ToggleFullscreen();
+        }
 
         game.step_cooldown -= dt;
         if (game.step_cooldown <= 0.0f) {
