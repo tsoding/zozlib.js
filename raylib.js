@@ -350,6 +350,9 @@ class RaylibJs {
         this.seed = seed;
     }
 
+    // Here is the simple Park and Miller random number generator instead
+    // of SplitMix64 and Xoshiro128** combo used in raylib. (https://github.com/raysan5/raylib/blob/8a5fd3ac1d481ff978363b80298770ed8eeca9f8/src/external/rprand.h#L120)
+    // TODO: We'll need to implement the same algorithm in the future
     GetRandomValue(min, max) {
         if (min > max) [min, max] = [max, min];
         this.seed = this.seed * 16807 % 2147483647;
