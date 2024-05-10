@@ -37,6 +37,7 @@ class RaylibJs {
         this.ctx = undefined;
         this.dt = undefined;
         this.targetFPS = 60;
+        this.seed = undefined;
         this.entryFunction = undefined;
         this.prevPressedKeyState = new Set();
         this.currentPressedKeyState = new Set();
@@ -111,6 +112,7 @@ class RaylibJs {
         this.ctx.canvas.height = height;
         const buffer = this.wasm.instance.exports.memory.buffer;
         document.title = cstr_by_ptr(buffer, title_ptr);
+        this.seed = Date.now();
     }
 
     WindowShouldClose(){
@@ -344,6 +346,19 @@ class RaylibJs {
         this.ctx.fillText(text, posX, posY + fontSize);
     }
 
+    SetRandomSeed(seed) {
+        this.seed = seed;
+    }
+
+    // Here is the simple Park and Miller random number generator instead
+    // of SplitMix64 and Xoshiro128** combo used in raylib. (https://github.com/raysan5/raylib/blob/8a5fd3ac1d481ff978363b80298770ed8eeca9f8/src/external/rprand.h#L120)
+    // TODO: We'll need to implement the same algorithm in the future
+    GetRandomValue(min, max) {
+        if (min > max) [min, max] = [max, min];
+        this.seed = this.seed * 16807 % 2147483647;
+        return (this.seed % (max - min + 1)) + min;
+    }
+    
     raylib_js_set_entry(entry) {
         this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);
     }

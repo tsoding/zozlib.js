@@ -48,6 +48,11 @@ Example examples[] = {
         .bin_path   = "./build/text_writing_anim",
         .wasm_path  = "./wasm/text_writing_anim.wasm",
     },
+    {
+        .src_path   = "./examples/core_random_colors.c",
+        .bin_path   = "./build/core_random_colors",
+        .wasm_path  = "./wasm/core_random_colors.wasm",
+    },
 };
 
 bool build_native(void)
