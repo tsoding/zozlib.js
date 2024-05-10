@@ -37,6 +37,7 @@ class RaylibJs {
         this.ctx = undefined;
         this.dt = undefined;
         this.targetFPS = 60;
+        this.seed = undefined;
         this.entryFunction = undefined;
         this.prevPressedKeyState = new Set();
         this.currentPressedKeyState = new Set();
@@ -111,6 +112,7 @@ class RaylibJs {
         this.ctx.canvas.height = height;
         const buffer = this.wasm.instance.exports.memory.buffer;
         document.title = cstr_by_ptr(buffer, title_ptr);
+        this.seed = Date.now();
     }
 
     WindowShouldClose(){
@@ -344,6 +346,16 @@ class RaylibJs {
         this.ctx.fillText(text, posX, posY + fontSize);
     }
 
+    SetRandomSeed(seed) {
+        this.seed = seed;
+    }
+
+    GetRandomValue(min, max) {
+        if (min > max) [min, max] = [max, min];
+        this.seed = this.seed * 16807 % 2147483647;
+        return (this.seed % (max - min + 1)) + min;
+    }
+    
     raylib_js_set_entry(entry) {
         this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);
     }
