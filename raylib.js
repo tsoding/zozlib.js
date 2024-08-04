@@ -61,8 +61,9 @@ class RaylibJs {
         }
 
         const canvas = document.getElementById(canvasId);
+        this.btx = document.createElement("canvas").getContext("2d");
         this.ctx = canvas.getContext("2d");
-        if (this.ctx === null) {
+        if (this.ctx === null || this.btx === null) {
             throw new Error("Could not create 2d canvas context");
         }
 
@@ -109,6 +110,8 @@ class RaylibJs {
     InitWindow(width, height, title_ptr) {
         this.ctx.canvas.width = width;
         this.ctx.canvas.height = height;
+        this.btx.canvas.width = width;
+        this.btx.canvas.height = height;
         const buffer = this.wasm.instance.exports.memory.buffer;
         document.title = cstr_by_ptr(buffer, title_ptr);
     }
@@ -310,13 +313,28 @@ class RaylibJs {
     }
 
     // RLAPI void DrawTexture(Texture2D texture, int posX, int posY, Color tint);
-    DrawTexture(texture_ptr, posX, posY, color_ptr) {
+    DrawTexture(texture_ptr, posX, posY, tint_ptr) {
+        /** @type {ArrayBuffer} */
         const buffer = this.wasm.instance.exports.memory.buffer;
-        const [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr, 5);
-        // // TODO: implement tinting for DrawTexture
-        // const tint = getColorFromMemory(buffer, color_ptr);
-
-        this.ctx.drawImage(this.images[id], posX, posY);
+        let [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr);
+        const tint = getColorFromMemory(buffer, tint_ptr);
+        const texture = this.images[id];
+        if (texture === undefined) {
+            // TODO: Better error reporting
+            throw new Error(`textureID ${id} not found.`);
+        }
+        // TODO: actually use width / height from the passed struct
+        width = texture.width;
+        height = texture.height;
+        this.btx.clearRect(0, 0, width, height);
+        this.btx.drawImage(texture, 0, 0);
+        this.btx.fillStyle = tint;
+        this.btx.globalCompositeOperation = "multiply";
+        this.btx.fillRect(0, 0, width, height);
+        this.btx.globalCompositeOperation = "destination-in";
+        this.btx.drawImage(texture, 0, 0);
+        this.btx.globalCompositeOperation = "source-over";
+        this.ctx.drawImage(this.btx.canvas, 0, 0, width, height, posX, posY, width, height);
     }
 
     // TODO: codepoints are not implemented
