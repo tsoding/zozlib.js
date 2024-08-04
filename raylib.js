@@ -21,7 +21,33 @@ const LOG_ERROR   = iota++; // Error logging, used on unrecoverable failures
 const LOG_FATAL   = iota++; // Fatal logging, used to abort program: exit(EXIT_FAILURE)
 const LOG_NONE    = iota++; // Disable logging
 
-class RaylibJs {
+export const browserPlatform = {
+    updateTitle(title) {
+        document.title = title
+    },
+    traceLog(logLevel, text, args) {
+        switch(logLevel) {
+        case LOG_ALL:     console.log(`ALL: ${text} ${args}`);     break;
+        case LOG_TRACE:   console.log(`TRACE: ${text} ${args}`);   break;
+        case LOG_DEBUG:   console.log(`DEBUG: ${text} ${args}`);   break;
+        case LOG_INFO:    console.log(`INFO: ${text} ${args}`);    break;
+        case LOG_WARNING: console.log(`WARNING: ${text} ${args}`); break;
+        case LOG_ERROR:   console.log(`ERROR: ${text} ${args}`);   break;
+        case LOG_FATAL:   throw new Error(`FATAL: ${text}`);
+        case LOG_NONE:    console.log(`NONE: ${text} ${args}`);    break;
+        }
+    },
+    addFont(font) {
+        document.fonts.add(font)
+    },
+    loadImage(filename) {
+        var img = new Image();
+        img.src = filename;
+        return { status: "loaded", data: img }
+    }
+}
+
+export class RaylibJs {
     // TODO: We stole the font from the website
     // (https://raylib.com/) and it's slightly different than
     // the one that is "baked" into Raylib library itself. To
@@ -34,7 +60,6 @@ class RaylibJs {
     #reset() {
         this.previous = undefined;
         this.wasm = undefined;
-        this.ctx = undefined;
         this.dt = undefined;
         this.targetFPS = 60;
         this.entryFunction = undefined;
@@ -42,78 +67,70 @@ class RaylibJs {
         this.currentPressedKeyState = new Set();
         this.currentMouseWheelMoveState = 0;
         this.currentMousePosition = {x: 0, y: 0};
+        this.frameId = undefined
         this.images = [];
-        this.quit = false;
     }
-
-    constructor() {
-        this.#reset();
-    }
-
-    stop() {
-        this.quit = true;
-    }
-
-    async start({ wasmPath, canvasId }) {
-        if (this.wasm !== undefined) {
-            console.error("The game is already running. Please stop() it first.");
-            return;
-        }
-
-        const canvas = document.getElementById(canvasId);
+    
+    constructor(canvas, platform) {
         this.ctx = canvas.getContext("2d");
         if (this.ctx === null) {
             throw new Error("Could not create 2d canvas context");
         }
+        this.platform = platform
+        this.#reset();
+    }
 
+    handleKeyDown(keyCode) {
+        this.currentPressedKeyState.add(keyCode);
+    }
+
+    handleKeyUp(keyCode) {
+        this.currentPressedKeyState.delete(keyCode);
+    }
+
+    handleWheelMove(direction) {
+        this.currentMouseWheelMoveState = direction
+    }
+
+    handleMouseMove(position) {
+        this.currentMousePosition = position
+    }
+
+    next = (timestamp) => {
+        this.dt = (timestamp - this.previous)/1000.0;
+        this.previous = timestamp;
+        this.entryFunction();
+        this.frameId = requestAnimationFrame(this.next);
+    }
+
+    async start({ wasmPath }) {
+        if (this.wasm !== undefined) {
+            throw new Error("The game is already running. Please stop() it first.");
+        }
         this.wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
             env: make_environment(this)
         });
-
-        const keyDown = (e) => {
-            this.currentPressedKeyState.add(glfwKeyMapping[e.code]);
-        };
-        const keyUp = (e) => {
-            this.currentPressedKeyState.delete(glfwKeyMapping[e.code]);
-        };
-        const wheelMove = (e) => {
-          this.currentMouseWheelMoveState = Math.sign(-e.deltaY);
-        };
-        const mouseMove = (e) => {
-            this.currentMousePosition = {x: e.clientX, y: e.clientY};
-        };
-        window.addEventListener("keydown", keyDown);
-        window.addEventListener("keyup", keyUp);
-        window.addEventListener("wheel", wheelMove);
-        window.addEventListener("mousemove", mouseMove);
-
         this.wasm.instance.exports.main();
-        const next = (timestamp) => {
-            if (this.quit) {
-                this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-                window.removeEventListener("keydown", keyDown);
-                this.#reset()
-                return;
-            }
-            this.dt = (timestamp - this.previous)/1000.0;
-            this.previous = timestamp;
-            this.entryFunction();
-            window.requestAnimationFrame(next);
-        };
-        window.requestAnimationFrame((timestamp) => {
-            this.previous = timestamp;
-            window.requestAnimationFrame(next);
+        this.frameId = requestAnimationFrame((timestamp) => {
+            this.previous = timestamp
+            this.frameId = requestAnimationFrame(this.next)
         });
+    }
+    
+    stop() {
+        cancelAnimationFrame(this.frameId);
+        this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+        this.#reset()
     }
 
     InitWindow(width, height, title_ptr) {
         this.ctx.canvas.width = width;
         this.ctx.canvas.height = height;
         const buffer = this.wasm.instance.exports.memory.buffer;
-        document.title = cstr_by_ptr(buffer, title_ptr);
+        this.platform.updateTitle(cstr_by_ptr(buffer, title_ptr))
     }
 
-    WindowShouldClose(){
+    WindowShouldClose() {
         return false;
     }
 
@@ -206,7 +223,7 @@ class RaylibJs {
         return false;
     }
 
-    TextFormat(... args){ 
+    TextFormat(... args) {
         // TODO: Implement printf style formatting for TextFormat
         return args[0];
     }
@@ -215,25 +232,15 @@ class RaylibJs {
         // TODO: Implement printf style formatting for TraceLog
         const buffer = this.wasm.instance.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
-        switch(logLevel) {
-        case LOG_ALL:     console.log(`ALL: ${text} ${args}`);     break;
-        case LOG_TRACE:   console.log(`TRACE: ${text} ${args}`);   break;
-        case LOG_DEBUG:   console.log(`DEBUG: ${text} ${args}`);   break;
-        case LOG_INFO:    console.log(`INFO: ${text} ${args}`);    break;
-        case LOG_WARNING: console.log(`WARNING: ${text} ${args}`); break;
-        case LOG_ERROR:   console.log(`ERROR: ${text} ${args}`);   break;
-        case LOG_FATAL:   throw new Error(`FATAL: ${text}`);
-        case LOG_NONE:    console.log(`NONE: ${text} ${args}`);    break;
-        }
+        this.platform.traceLog(logLevel, text, args);
     }
 
     GetMousePosition(result_ptr) {
-        const bcrect = this.ctx.canvas.getBoundingClientRect();
-        const x = this.currentMousePosition.x - bcrect.left;
-        const y = this.currentMousePosition.y - bcrect.top;
-
         const buffer = this.wasm.instance.exports.memory.buffer;
-        new Float32Array(buffer, result_ptr, 2).set([x, y]);
+        new Float32Array(buffer, result_ptr, 2).set([
+            this.currentMousePosition.x,
+            this.currentMousePosition.y,
+        ]);
     }
 
     CheckCollisionPointRec(point_ptr, rec_ptr) {
@@ -295,11 +302,8 @@ class RaylibJs {
         const filename = cstr_by_ptr(buffer, filename_ptr);
 
         var result = new Uint32Array(buffer, result_ptr, 5)
-        var img = new Image();
-        img.src = filename;
-        this.images.push(img);
-
-        result[0] = this.images.indexOf(img);
+        const img = this.platform.loadImage(filename)
+        result[0] = this.images.push(img) - 1;
         // TODO: get the true width and height of the image
         result[1] = 256; // width
         result[2] = 256; // height
@@ -313,10 +317,17 @@ class RaylibJs {
     DrawTexture(texture_ptr, posX, posY, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr, 5);
-        // // TODO: implement tinting for DrawTexture
-        // const tint = getColorFromMemory(buffer, color_ptr);
-
-        this.ctx.drawImage(this.images[id], posX, posY);
+        const img = this.images[id];
+        switch (img.status) {
+            case "loaded":
+                // // TODO: implement tinting for DrawTexture
+                // const tint = getColorFromMemory(buffer, color_ptr);
+                this.ctx.drawImage(img.data, posX, posY);
+            case "loading":
+                return;
+            case "error":
+                this.platform.traceLog(LOG_FATAL, `Failed to load image: ${img.error}`);
+        }
     }
 
     // TODO: codepoints are not implemented
@@ -326,7 +337,7 @@ class RaylibJs {
         // TODO: dynamically generate the name for the font
         // Support more than one custom font
         const font = new FontFace("myfont", `url(${fileName})`);
-        document.fonts.add(font);
+        this.platform.addFont(font);
         font.load();
     }
 
@@ -393,7 +404,213 @@ class RaylibJs {
     }
 }
 
-const glfwKeyMapping = {
+const REQUEST_MESSAGE_TYPE = {
+    INIT: 0,
+    START: 1,
+    STOP: 2,
+    KEY_DOWN: 3,
+    KEY_UP: 4,
+    WHEEL_MOVE: 5,
+    MOUSE_MOVE: 6,
+}
+
+const RESPONSE_MESSAGE_TYPE = {
+    START_SUCCESS: 0,
+    START_FAIL: 1,
+    UPDATE_TITLE: 2,
+    TRACE_LOG: 3,
+}
+
+export function makeMessagesHandler(self) {
+    let raylibJs = undefined
+    const platform = {
+        updateTitle(title) {
+            self.postMessage({
+                type: RESPONSE_MESSAGE_TYPE.UPDATE_TITLE,
+                title
+            })
+        },
+        traceLog(logLevel, message, args) {
+            self.postMessage({
+                type: RESPONSE_MESSAGE_TYPE.TRACE_LOG,
+                logLevel,
+                message,
+                args,
+            })
+        },
+        addFont(font) {
+            self.fonts.add(font)
+        },
+        loadImage(filename) {
+            const img = {
+                status: "loading",
+                data: undefined,
+                error: undefined
+            }
+            fetch(filename)
+                .then(res => res.blob())
+                .then(blob => createImageBitmap(blob))
+                .then(data => {
+                    img.status = "loaded"
+                    img.data = data
+                }, (error) => {
+                    img.status = "error"
+                    img.error = error
+                })
+            return img
+        }
+    }
+    const handlers = new Array(Object.keys(REQUEST_MESSAGE_TYPE).length)
+    handlers[REQUEST_MESSAGE_TYPE.INIT] = ({ canvas }) => {
+        if (raylibJs) {
+            raylibJs.stop()
+        }
+        raylibJs = new RaylibJs(canvas, platform)
+    }
+    handlers[REQUEST_MESSAGE_TYPE.START] = async ({ params }) => {
+        try {
+            await self.fonts.ready
+            await raylibJs.start(params)
+            self.postMessage({
+                type: RESPONSE_MESSAGE_TYPE.START_SUCCESS
+            })
+        } catch (error) {
+            console.log(error)
+            self.postMessage({
+                type: RESPONSE_MESSAGE_TYPE.START_FAIL,
+                reason: String(error)
+            })
+        }
+    }
+    handlers[REQUEST_MESSAGE_TYPE.STOP] = () => {
+        raylibJs.stop()
+    }
+    handlers[REQUEST_MESSAGE_TYPE.KEY_DOWN] = ({ keyCode }) => {
+        raylibJs.handleKeyDown(keyCode)
+    }
+    handlers[REQUEST_MESSAGE_TYPE.KEY_UP] = ({ keyCode }) => {
+        raylibJs.handleKeyUp(keyCode)
+    }
+    handlers[REQUEST_MESSAGE_TYPE.WHEEL_MOVE] = ({ direction }) => {
+        raylibJs.handleWheelMove(direction)
+    }
+    handlers[REQUEST_MESSAGE_TYPE.MOUSE_MOVE] = ({ position }) => {
+        raylibJs.handleMouseMove(position)
+    }
+    return (event) => {
+        if (handlers[event.data.type]) {
+            handlers[event.data.type](event.data)
+        } else {
+            console.error("Unhandled message", event)
+        }
+    }
+}
+
+export class RaylibJsWorker {
+
+    handleMessage = (event) => {
+        switch (event.data.type) {
+        case RESPONSE_MESSAGE_TYPE.START_SUCCESS: {
+            if (this.onStartSuccess) {
+                this.onStartSuccess()
+                return
+            }
+        }
+        case RESPONSE_MESSAGE_TYPE.START_FAIL: {
+            if (this.onStartFail) {
+                this.onStartFail(new Error(event.data.reason))
+                return
+            }
+        }
+        case RESPONSE_MESSAGE_TYPE.UPDATE_TITLE: {
+            this.platform.updateTitle(event.data.title)
+            break
+        }
+        case RESPONSE_MESSAGE_TYPE.TRACE_LOG: {
+            this.platform.traceLog(
+                event.data.logLevel,
+                event.data.message,
+                event.data.args,
+            )
+            break
+        }
+        default:
+            console.error("Unhandled worker message", event)
+        }
+    }
+
+    constructor(worker, canvas, platform) {
+        this.worker = worker
+        this.platform = platform
+        this.startPromise = undefined
+        this.onStartSuccess = undefined
+        this.onStartFail = undefined
+        this.worker.addEventListener("message", this.handleMessage)
+        // https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas
+        const offscreen = canvas.transferControlToOffscreen()
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.INIT,
+            canvas: offscreen,
+        }, [offscreen])
+    }
+
+    async start(params) {
+        if (this.startPromise) {
+            return this.startPromise
+        }
+        this.startPromise = new Promise((resolve, reject) => {
+            this.onStartSuccess = resolve
+            this.onStartFail = reject
+        }).then(() => {
+            this.startPromise = undefined
+            this.onStartSuccess = undefined
+            this.onStartFail = undefined
+        })
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.START,
+            params
+        })
+        return this.startPromise
+    }
+
+    stop() {
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.STOP
+        })
+        this.worker.removeEventListener("message", this.handleMessage)
+    }
+
+    handleKeyDown(keyCode) {
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.KEY_DOWN,
+            keyCode
+        })
+    }
+
+    handleKeyUp(keyCode) {
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.KEY_UP,
+            keyCode
+        })
+    }
+
+    handleWheelMove(direction) {
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.WHEEL_MOVE,
+            direction
+        })
+    }
+
+    handleMouseMove(position) {
+        this.worker.postMessage({
+            type: REQUEST_MESSAGE_TYPE.MOUSE_MOVE,
+            position
+        })
+    }
+
+}
+
+export const glfwKeyMapping = {
     "Space":          32,
     "Quote":          39,
     "Comma":          44,

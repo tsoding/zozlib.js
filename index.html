@@ -34,7 +34,7 @@
 
         }
 
-        #raylib-example-select {
+        .raylib-select {
             display: block;
             max-width: 8rem;
         }
@@ -57,15 +57,101 @@
             src: url(fonts/acme_7_wide_xtnd.woff);
         }
     </style>
-    <script src="raylib.js"></script>
 </head>
 <body>
     <label for="raylib-example-select">Choose an Example:</label>
-        <select id="raylib-example-select" onchange="startRaylib(this.value)">
+    <select id="raylib-example-select" class="raylib-select" onchange="run()">
         <!-- This is populated by js -->
-        </select>
+    </select>
+    <label for="raylib-env-select">Execution context:</label>
+    <select id="raylib-env-select" class="raylib-select" onchange="run()">
+        <!-- This is populated by js -->
+    </select>
     <canvas id="game"></canvas>
-    <script>
+    <script type="module">
+        import { RaylibJs, RaylibJsWorker, glfwKeyMapping, browserPlatform } from "./raylib.js"
+
+        function addEventListeners (raylibJs, canvas) {
+            const keyDown = (e) => {
+                raylibJs.handleKeyDown(glfwKeyMapping[e.code]);
+            };
+            const keyUp = (e) => {
+                raylibJs.handleKeyUp(glfwKeyMapping[e.code]);
+            };
+            const wheelMove = (e) => {
+                raylibJs.handleWheelMove(Math.sign(-e.deltaY));
+            };
+            const mouseMove = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                raylibJs.handleMouseMove({
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top,
+                });
+            };
+
+            window.addEventListener("keydown", keyDown);
+            window.addEventListener("keyup", keyUp);
+            window.addEventListener("wheel", wheelMove);
+            window.addEventListener("mousemove", mouseMove);
+            return () => {
+                window.removeEventListener("mousemove", mouseMove);
+                window.removeEventListener("wheel", wheelMove);
+                window.removeEventListener("keyup", keyUp);
+                window.removeEventListener("keydown", keyDown);
+            }
+        }
+
+        function makeRunner ({
+            exampleSelector,
+            envSelector,
+            worker,
+            canvas,
+        }) {
+            let raylibJs = undefined
+            let removeEventListeners = undefined
+            const factories = {
+                "main": ({ canvas, platform }) => new RaylibJs(canvas, platform),
+                "worker": ({ worker, canvas, platform }) => new RaylibJsWorker(worker, canvas, platform),
+            }
+            let oldCanvas = canvas
+            return () => {
+                if (raylibJs) {
+                    raylibJs.stop()
+                    removeEventListeners()
+                }
+                const newCanvas = document.createElement("canvas")
+                newCanvas.id = oldCanvas.id
+                oldCanvas.replaceWith(newCanvas)
+                oldCanvas = newCanvas
+                raylibJs = factories[envSelector.value]({
+                    canvas: newCanvas,
+                    platform: browserPlatform,
+                    worker,
+                })
+                removeEventListeners = addEventListeners(raylibJs, newCanvas)
+                raylibJs.start({
+                    wasmPath: `wasm/${exampleSelector.value}.wasm`,
+                })
+            }
+        }
+
+        function makeQueryUpdater (...params) {
+            const queryParams = new URLSearchParams(window.location.search);
+            for (const { name, isValid, selector, defaultValue } of params) {
+                const value = queryParams.get(name);
+                const newValue = isValid(value) ? value : defaultValue
+                queryParams.set(name, newValue);
+                selector.value = newValue
+            }
+            history.replaceState(null, null, "?"+queryParams.toString());
+            return () => {
+                for (let { name, selector } of params) {
+                    queryParams.set(name, selector.value);
+                }
+                history.pushState(null, null, "?"+queryParams.toString());
+            }
+        }
+
         const wasmPaths = {
             "tsoding": ["tsoding_ball", "tsoding_snake",],
             "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel",],
@@ -76,55 +162,66 @@
         const defaultWasm = Object.values(wasmPaths)[0][0];
 
         const raylibExampleSelect = document.getElementById("raylib-example-select");
-
-        for (const exampleCategory in wasmPaths){
+        for (const exampleCategory in wasmPaths) {
             raylibExampleSelect.innerHTML += `<optgroup label="${exampleCategory}">`
-            for (const example of wasmPaths[exampleCategory]){
+            for (const example of wasmPaths[exampleCategory]) {
                 raylibExampleSelect.innerHTML += `<option>${example}</option>`
             }
             raylibExampleSelect.innerHTML += "</optgroup>"
         }
 
-        const { protocol } = window.location;
-        const isHosted = protocol !== "file:";
-        let raylibJs = undefined;
-
-        function startRaylib(selectedWasm){
-            var queryParams = new URLSearchParams(window.location.search);
-            queryParams.set("example", selectedWasm);
-            history.pushState(null, null, "?"+queryParams.toString());
-            raylibExampleSelect.value = selectedWasm;
-
-            if (isHosted) {
-                if (raylibJs !== undefined) {
-                    raylibJs.stop();
-                }
-                raylibJs = new RaylibJs();
-                raylibJs.start({
-                    wasmPath: `wasm/${selectedWasm}.wasm`,
-                    canvasId: "game",
-                });
-            } else {
-                window.addEventListener("load", () => {
-                    document.body.innerHTML = `
-                        <div class="not-hosted-msg">
-                            <div class="important">
-                                <p>Unfortunately, due to CORs restrictions, the wasm assembly cannot be fetched.</p>
-                                <p>Please navigate to this location using a web server.</p>
-                                <p>If you have Python 3 on your system you can just do:</p>
-                            </div>
-                            <code>$ python3 -m http.server 6969</code>
-                        </div>
-                        `;
-                });
+        const envs = {
+            "main": "main thread",
+            "worker": "worker thread",
+        }
+        const defaultEnv = Object.keys(envs)[0];
+        const raylibEnvSelect = document.getElementById("raylib-env-select");
+        for (const env in envs) {
+            raylibEnvSelect.innerHTML += `<option value="${env}">${envs[env]}</option>`
+        }
+        
+        const run = makeRunner({
+            exampleSelector: raylibExampleSelect,
+            envSelector: raylibEnvSelect,
+            canvas: document.getElementById("game"),
+            worker: new Worker("raylib.worker.js", {
+                type: "module",
+            }),
+        })
+        const updateQuery = makeQueryUpdater(
+            {
+                name: "example",
+                selector: raylibExampleSelect,
+                defaultValue: defaultWasm,
+                isValid: (value) => Object.values(wasmPaths).flat().includes(value),
+            },
+            {
+                name: "env",
+                selector: raylibEnvSelect,
+                defaultValue: defaultEnv,
+                isValid: (value) => value in envs,
             }
+        )
+        window.run = () => {
+            updateQuery()
+            run()
         }
 
-        let queryParams = new URLSearchParams(window.location.search);
-        const exampleParam = queryParams.get("example") ?? defaultWasm;
-
-        if (Object.values(wasmPaths).flat().includes(exampleParam)) startRaylib(exampleParam);
-        else startRaylib(defaultWasm);
+        const { protocol } = window.location;
+        const isHosted = protocol !== "file:";
+        
+        window.addEventListener("load", isHosted ? window.run : () => {
+            document.body.innerHTML = `
+                <div class="not-hosted-msg">
+                    <div class="important">
+                        <p>Unfortunately, due to CORs restrictions, the wasm assembly cannot be fetched.</p>
+                        <p>Please navigate to this location using a web server.</p>
+                        <p>If you have Python 3 on your system you can just do:</p>
+                    </div>
+                    <code>$ python3 -m http.server 6969</code>
+                </div>
+                `;
+        })
     </script>
 </body>
 </html>
