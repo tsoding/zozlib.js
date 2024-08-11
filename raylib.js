@@ -117,6 +117,8 @@ class RaylibJs {
         return false;
     }
 
+    CloseWindow() {}
+
     SetTargetFPS(fps) {
         console.log(`The game wants to run at ${fps} FPS, but in Web we gonna just ignore it.`);
         this.targetFPS = fps;
@@ -134,6 +136,10 @@ class RaylibJs {
         // TODO: This is a stopgap solution to prevent sudden jumps in dt when the user switches to a differen tab.
         // We need a proper handling of Target FPS here.
         return Math.min(this.dt, 1.0/this.targetFPS);
+    }
+
+    GetRandomValue(min, max) {
+        return Math.random() * (max - min) + min;
     }
 
     BeginDrawing() {}
@@ -174,6 +180,23 @@ class RaylibJs {
         for (var i = 0; i < lines.length; i++) {
             this.ctx.fillText(lines[i], posX, posY + fontSize + (i * fontSize));
         }
+    }
+
+    // RLAPI void DrawLine(int startPosX, int startPosY, int endPosX, int endPosY, Color color);                // Draw a line
+    DrawLine(startX, startY, endX, endY, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
+
+        this.ctx.beginPath();
+
+        // Add 0.5 for sharp lines: http://diveintohtml5.info/canvas.html#pixel-madness
+        this.ctx.moveTo(startX + 0.5, startY + 0.5);
+        this.ctx.lineTo(endX + 0.5, endY + 0.5);
+
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 1;
+
+        this.ctx.stroke();
     }
 
     // RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
