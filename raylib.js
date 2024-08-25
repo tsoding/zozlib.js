@@ -42,6 +42,7 @@ class RaylibJs {
         this.currentPressedKeyState = new Set();
         this.currentMouseWheelMoveState = 0;
         this.currentMousePosition = {x: 0, y: 0};
+        this.currentMouseButton = undefined;
         this.images = [];
         this.quit = false;
     }
@@ -82,10 +83,15 @@ class RaylibJs {
         const mouseMove = (e) => {
             this.currentMousePosition = {x: e.clientX, y: e.clientY};
         };
+        const mouseClick = (e) => {
+            this.currentMouseButton = e.button;
+        }
+        
         window.addEventListener("keydown", keyDown);
         window.addEventListener("keyup", keyUp);
         window.addEventListener("wheel", wheelMove);
         window.addEventListener("mousemove", mouseMove);
+        window.addEventListener("mousedown", mouseClick);
 
         this.wasm.instance.exports.main();
         const next = (timestamp) => {
@@ -199,6 +205,10 @@ class RaylibJs {
     IsKeyDown(key) {
         return this.currentPressedKeyState.has(key);
     }
+
+    IsMouseButtonPressed(button){
+        return this.currentMouseButton == raylibMOuseButtonMapping[button];
+     }
     GetMouseWheelMove() {
       return this.currentMouseWheelMoveState;
     }
@@ -391,6 +401,16 @@ class RaylibJs {
     raylib_js_set_entry(entry) {
         this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);
     }
+}
+
+const raylibMOuseButtonMapping = {
+    0: 0,
+    1: 2,
+    2: 1,
+    3: 3,
+    4: 4,
+    5: 5,
+    6: 6,
 }
 
 const glfwKeyMapping = {
