@@ -185,6 +185,15 @@ class RaylibJs {
         this.ctx.fillRect(posX, posY, width, height);
     }
 
+    DrawRectangleV(position_ptr, size_ptr, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
+        const position = new Float32Array(buffer, position_ptr, 2);
+        const size = new Float32Array(buffer, size_ptr, 2);
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(position[0], position[1], size[0], size[1]);
+    }
+
     IsKeyPressed(key) {
         return !this.prevPressedKeyState.has(key) && this.currentPressedKeyState.has(key);
     }
@@ -414,6 +423,41 @@ class RaylibJs {
         audio.loop = false;
         audio.currentTime = 0;
         audio.play();
+    }
+
+    GetRandomValue(min, max) {
+        return min + Math.floor(Math.random()*(max - min + 1));
+    }
+
+    ColorFromHSV(result_ptr, hue, saturation, value) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const result = new Uint8Array(buffer, result_ptr, 4);
+
+        // Red channel
+        let k = (5.0 + hue/60.0)%6;
+        let t = 4.0 - k;
+        k = (t < k)? t : k;
+        k = (k < 1)? k : 1;
+        k = (k > 0)? k : 0;
+        result[0] = Math.floor((value - value*saturation*k)*255.0);
+
+        // Green channel
+        k = (3.0 + hue/60.0)%6;
+        t = 4.0 - k;
+        k = (t < k)? t : k;
+        k = (k < 1)? k : 1;
+        k = (k > 0)? k : 0;
+        result[1] = Math.floor((value - value*saturation*k)*255.0);
+
+        // Blue channel
+        k = (1.0 + hue/60.0)%6;
+        t = 4.0 - k;
+        k = (t < k)? t : k;
+        k = (k < 1)? k : 1;
+        k = (k > 0)? k : 0;
+        result[2] = Math.floor((value - value*saturation*k)*255.0);
+
+        result[3] = 255;
     }
 
     raylib_js_set_entry(entry) {
