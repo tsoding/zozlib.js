@@ -257,7 +257,15 @@ class RaylibJs {
         this.ctx.fillStyle = color;
         this.ctx.fillRect(x, y, w, h);
     }
-
+    DrawRectangleLines(x, y, w, h, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
+        const lineThick = 2;
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = lineThick;
+        this.ctx.strokeRect(x + lineThick/2, y + lineThick/2, w - lineThick, h - lineThick);
+    }
+    
     DrawRectangleLinesEx(rec_ptr, lineThick, color_ptr) {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
@@ -294,15 +302,22 @@ class RaylibJs {
         const buffer = this.wasm.instance.exports.memory.buffer;
         const filename = cstr_by_ptr(buffer, filename_ptr);
 
-        var result = new Uint32Array(buffer, result_ptr, 5)
-        var img = new Image();
+        const result = new Uint32Array(buffer, result_ptr, 5)
+        const img = new Image();
         img.src = filename;
+        
+        //wait for the image to load, busy loop no idea what the correct solution would be
+        let maxWait = 1000;
+        while(maxWait >= 0)
+            maxWait--;       
+        
+        console.log("image loaded", filename, img.width, img.height);
         this.images.push(img);
 
         result[0] = this.images.indexOf(img);
-        // TODO: get the true width and height of the image
-        result[1] = 256; // width
-        result[2] = 256; // height
+        // TODO: get the true width and height of the image because it sometimes isnt loaded yet a refresh helps because it's cached
+        result[1] = img.width || 256; // width
+        result[2] = img.height || 256; // height
         result[3] = 1; // mipmaps
         result[4] = 7; // format PIXELFORMAT_UNCOMPRESSED_R8G8B8A8
 
@@ -317,6 +332,18 @@ class RaylibJs {
         // const tint = getColorFromMemory(buffer, color_ptr);
 
         this.ctx.drawImage(this.images[id], posX, posY);
+    }
+    //void DrawTextureRec(Texture2D texture, Rectangle source, Vector2 position, Color tint)
+    DrawTextureRec(texture_ptr, rec_ptr, position_ptr, color_ptr) {
+        const buffer = this.wasm.instance.exports.memory.buffer;
+        const [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr, 5);
+        const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
+        const [px, py] = new Float32Array(buffer, position_ptr, 2);
+        // // TODO: implement tinting for DrawTexture
+        // const tint = getColorFromMemory(buffer, color_ptr);
+        
+        this.ctx.drawImage(this.images[id], x, y, w, h, px, py, w, h);
+        
     }
 
     // TODO: codepoints are not implemented
