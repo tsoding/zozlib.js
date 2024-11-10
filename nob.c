@@ -71,6 +71,7 @@ bool build_wasm(void)
         nob_cmd_append(&cmd, "--target=wasm32");
         nob_cmd_append(&cmd, "-I./include");
         nob_cmd_append(&cmd, "--no-standard-libraries");
+        nob_cmd_append(&cmd, "-ffreestanding");
         nob_cmd_append(&cmd, "-Wl,--export-table");
         nob_cmd_append(&cmd, "-Wl,--no-entry");
         nob_cmd_append(&cmd, "-Wl,--allow-undefined");
