@@ -1,3 +1,4 @@
+// @ts-check
 import { DataSchema } from "./SharedData.js";
 
 if (typeof importScripts !== "function") {
@@ -39,7 +40,7 @@ class RaylibJs {
 
     #reset() {
         this.previous = undefined;
-        this.wasm = undefined;
+        this.exports = undefined;
         this.ctx = undefined;
         this.dt = undefined;
         this.targetFPS = 60;
@@ -50,9 +51,15 @@ class RaylibJs {
     constructor() {
         this.#reset();
     }
-    
-    async start({wasmPath, shared}) {
-        if (this.wasm !== undefined) {
+
+    stop() {
+        this.quit = true;
+    }
+
+    async startExports({ exports, shared }) {
+        console.log(exports);
+
+        if (this.exports !== undefined) {
             console.error("The game is already running. Please stop() it first.");
             return;
         }
@@ -66,20 +73,17 @@ class RaylibJs {
             throw new Error("Could not create 2d canvas context");
         }
 
-        this.wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
-            env: make_environment(this)
-        });
-        
         // Load default font
         const grixel = new FontFace("grixel", "url(./fonts/acme_7_wide_xtnd.woff)");
         self.fonts.add(grixel);
         await grixel.load();
+        this.exports = exports;
 
         this.#wait(() => reply("requestAnimationFrame"));
         this.previous = this.views.time[0];
         this.#wait(() => reply("requestAnimationFrame"));
 
-        this.wasm.instance.exports.main();
+        this.exports.main();
         // backwards compatibility
         while (!this.WindowShouldClose()) {
             this.entryFunction();
@@ -87,10 +91,21 @@ class RaylibJs {
         this.CloseWindow();
     }
 
+    async start({ wasmPath, shared }) {
+        let wasm = await WebAssembly.instantiateStreaming(fetch(wasmPath), {
+            env: make_environment(this)
+        });
+
+        this.startExports( {
+            exports: wasm.instance.exports,
+            shared,
+        })
+    }
+
     InitWindow(width, height, title_ptr) {
         this.ctx.canvas.width = width;
         this.ctx.canvas.height = height;
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         reply("window", width, height, cstr_by_ptr(buffer, title_ptr));
     }
 
@@ -139,7 +154,7 @@ class RaylibJs {
     }
 
     DrawCircleV(center_ptr, radius, color_ptr) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const [x, y] = new Float32Array(buffer, center_ptr, 2);
         const [r, g, b, a] = new Uint8Array(buffer, color_ptr, 4);
         const color = color_hex_unpacked(r, g, b, a);
@@ -150,13 +165,13 @@ class RaylibJs {
     }
 
     ClearBackground(color_ptr) {
-        this.ctx.fillStyle = getColorFromMemory(this.wasm.instance.exports.memory.buffer, color_ptr);
+        this.ctx.fillStyle = getColorFromMemory(this.exports.memory.buffer, color_ptr);
         this.ctx.fillRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
     }
 
     // RLAPI void DrawText(const char *text, int posX, int posY, int fontSize, Color color);       // Draw text (using default font)
     DrawText(text_ptr, posX, posY, fontSize, color_ptr) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         const color = getColorFromMemory(buffer, color_ptr);
         fontSize *= this.#FONT_SCALE_MAGIC;
@@ -172,10 +187,19 @@ class RaylibJs {
 
     // RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
     DrawRectangle(posX, posY, width, height, color_ptr) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.fillStyle = color;
         this.ctx.fillRect(posX, posY, width, height);
+    }
+
+    DrawRectangleV(position_ptr, size_ptr, color_ptr) {
+        const buffer = this.exports.memory.buffer;
+        const color = getColorFromMemory(buffer, color_ptr);
+        const position = new Float32Array(buffer, position_ptr, 2);
+        const size = new Float32Array(buffer, size_ptr, 2);
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(position[0], position[1], size[0], size[1]);
     }
 
     IsKeyPressed(key) {
@@ -204,7 +228,7 @@ class RaylibJs {
 
     TraceLog(logLevel, text_ptr, ... args) {
         // TODO: Implement printf style formatting for TraceLog
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         switch(logLevel) {
         case LOG_ALL:     console.log(`ALL: ${text} ${args}`);     break;
@@ -223,26 +247,26 @@ class RaylibJs {
         const x = this.views.mouse[0] - bcrect[0];
         const y = this.views.mouse[1] - bcrect[1];
 
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         new Float32Array(buffer, result_ptr, 2).set([x, y]);
     }
 
     CheckCollisionPointRec(point_ptr, rec_ptr) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const [x, y] = new Float32Array(buffer, point_ptr, 2);
         const [rx, ry, rw, rh] = new Float32Array(buffer, rec_ptr, 4);
         return ((x >= rx) && x <= (rx + rw) && (y >= ry) && y <= (ry + rh));
     }
 
     Fade(result_ptr, color_ptr, alpha) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const [r, g, b, _] = new Uint8Array(buffer, color_ptr, 4);
         const newA = Math.max(0, Math.min(255, 255.0*alpha));
         new Uint8Array(buffer, result_ptr, 4).set([r, g, b, newA]);
     }
 
     DrawRectangleRec(rec_ptr, color_ptr) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
         const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.fillStyle = color;
@@ -250,7 +274,7 @@ class RaylibJs {
     }
 
     DrawRectangleLinesEx(rec_ptr, lineThick, color_ptr) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const [x, y, w, h] = new Float32Array(buffer, rec_ptr, 4);
         const color = getColorFromMemory(buffer, color_ptr);
         this.ctx.strokeStyle = color;
@@ -259,7 +283,7 @@ class RaylibJs {
     }
 
     MeasureText(text_ptr, fontSize) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         fontSize *= this.#FONT_SCALE_MAGIC;
         this.ctx.font = `${fontSize}px grixel`;
@@ -267,7 +291,7 @@ class RaylibJs {
     }
 
     TextSubtext(text_ptr, position, length) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         const subtext = text.substring(position, length);
 
@@ -282,7 +306,7 @@ class RaylibJs {
 
     // RLAPI Texture2D LoadTexture(const char *fileName);
     LoadTexture(result_ptr, filename_ptr) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const filename = cstr_by_ptr(buffer, filename_ptr);
 
         var result = new Uint32Array(buffer, result_ptr, 5)
@@ -302,7 +326,7 @@ class RaylibJs {
 
     // RLAPI void DrawTexture(Texture2D texture, int posX, int posY, Color tint);
     DrawTexture(texture_ptr, posX, posY, color_ptr) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const [id, width, height, mipmaps, format] = new Uint32Array(buffer, texture_ptr, 5);
         // // TODO: implement tinting for DrawTexture
         // const tint = getColorFromMemory(buffer, color_ptr);
@@ -312,7 +336,7 @@ class RaylibJs {
 
     // TODO: codepoints are not implemented
     LoadFontEx(result_ptr, fileName_ptr/*, fontSize, codepoints, codepointCount*/) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const fileName = cstr_by_ptr(buffer, fileName_ptr);
         // TODO: dynamically generate the name for the font
         // Support more than one custom font
@@ -325,7 +349,7 @@ class RaylibJs {
     SetTextureFilter() {}
 
     MeasureTextEx(result_ptr, font, text_ptr, fontSize, spacing) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         const result = new Float32Array(buffer, result_ptr, 2);
         this.ctx.font = fontSize+"px myfont";
@@ -335,7 +359,7 @@ class RaylibJs {
     }
 
     DrawTextEx(font, text_ptr, position_ptr, fontSize, spacing, tint_ptr) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
         const [posX, posY] = new Float32Array(buffer, position_ptr, 2);
         const tint = getColorFromMemory(buffer, tint_ptr);
@@ -344,8 +368,43 @@ class RaylibJs {
         this.ctx.fillText(text, posX, posY + fontSize);
     }
 
+    GetRandomValue(min, max) {
+        return min + Math.floor(Math.random()*(max - min + 1));
+    }
+
+    ColorFromHSV(result_ptr, hue, saturation, value) {
+        const buffer = this.exports.memory.buffer;
+        const result = new Uint8Array(buffer, result_ptr, 4);
+
+        // Red channel
+        let k = (5.0 + hue/60.0)%6;
+        let t = 4.0 - k;
+        k = (t < k)? t : k;
+        k = (k < 1)? k : 1;
+        k = (k > 0)? k : 0;
+        result[0] = Math.floor((value - value*saturation*k)*255.0);
+
+        // Green channel
+        k = (3.0 + hue/60.0)%6;
+        t = 4.0 - k;
+        k = (t < k)? t : k;
+        k = (k < 1)? k : 1;
+        k = (k > 0)? k : 0;
+        result[1] = Math.floor((value - value*saturation*k)*255.0);
+
+        // Blue channel
+        k = (1.0 + hue/60.0)%6;
+        t = 4.0 - k;
+        k = (t < k)? t : k;
+        k = (k < 1)? k : 1;
+        k = (k > 0)? k : 0;
+        result[2] = Math.floor((value - value*saturation*k)*255.0);
+
+        result[3] = 255;
+    }
+
     raylib_js_set_entry(entry) {
-        this.entryFunction = this.wasm.instance.exports.__indirect_function_table.get(entry);
+        this.entryFunction = this.exports.__indirect_function_table.get(entry);
     }
     
     #wait(cmd) {
@@ -355,13 +414,13 @@ class RaylibJs {
     }
     
     memcpy(dest_ptr, src_ptr, count) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         new Uint8Array(buffer, dest_ptr, count).set(new Uint8Array(buffer, src_ptr, count));
         return dest_ptr;
     }
     
     memset(ptr, value, num) {
-        const buffer = this.wasm.instance.exports.memory.buffer;
+        const buffer = this.exports.memory.buffer;
         new Uint8Array(buffer, ptr, num).fill(value);
         return ptr;
   }
