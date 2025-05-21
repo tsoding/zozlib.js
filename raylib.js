@@ -140,6 +140,12 @@ class RaylibJs {
     GetScreenHeight() {
         return this.ctx.canvas.height;
     }
+    GetMonitorWidth(monitor){
+        return window.innerWidth;
+    }
+    GetMonitorHeight(monitor){
+        return window.innerHeight;
+    }
 
     GetFrameTime() {
         // TODO: This is a stopgap solution to prevent sudden jumps in dt when the user switches to a differen tab.
