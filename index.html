@@ -39,7 +39,8 @@
             max-width: 8rem;
         }
 
-        .not-hosted-msg {
+        .not-hosted-msg,
+        .no-coi-msg {
             text-align: center;
             position: absolute;
 
@@ -57,19 +58,21 @@
             src: url(fonts/acme_7_wide_xtnd.woff);
         }
     </style>
-    <script src="raylib.js"></script>
+    <!-- Hack for GitHub Pages found on https://github.com/orgs/community/discussions/13309#discussioncomment-3844940 -->
+    <script src="enable-threads.js"></script>
 </head>
 <body>
     <label for="raylib-example-select">Choose an Example:</label>
-        <select id="raylib-example-select" onchange="startRaylib(this.value)">
+        <select id="raylib-example-select">
         <!-- This is populated by js -->
         </select>
     <canvas id="game"></canvas>
-    <script>
+    <script type="module">
+        import RaylibJs from "./raylib-wrapper.js";
         const wasmPaths = {
             "tsoding": ["tsoding_ball", "tsoding_snake",],
             "core": ["core_basic_window", "core_basic_screen_manager", "core_input_keys", "core_input_mouse_wheel",],
-            "shapes": ["shapes_colors_palette"],
+            "shapes": ["shapes_colors_palette", "shapes_colors_palette_async"],
             "text": ["text_writing_anim"],
             "textures": ["textures_logo_raylib"],
         }
@@ -84,9 +87,11 @@
             }
             raylibExampleSelect.innerHTML += "</optgroup>"
         }
+        raylibExampleSelect.onchange = (ev) => startRaylib(ev.currentTarget.value);
 
         const { protocol } = window.location;
         const isHosted = protocol !== "file:";
+        const isCOI = crossOriginIsolated ?? false;
         let raylibJs = undefined;
 
         function startRaylib(selectedWasm){
@@ -96,6 +101,21 @@
             raylibExampleSelect.value = selectedWasm;
 
             if (isHosted) {
+                if (!isCOI) {
+                  window.addEventListener("load", () => {
+                      document.body.innerHTML = `
+                          <div class="no-coi-msg">
+                              <div class="important">
+                              <p>Unfortunately, due to security restrictions, <code>SharedArrayBuffer</code> cannot be used.</p>
+                              <p>Please navigate to this location using a web server that has the <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements">required headers set</a>.</p>
+                                  <p>If you have Python 3 on your system you can just do:</p>
+                              </div>
+                              <code>$ python3 ./server.py 6969</code>
+                          </div>
+                          `;
+                  });
+                  return;
+                }
                 if (raylibJs !== undefined) {
                     raylibJs.stop();
                 }
@@ -113,7 +133,7 @@
                                 <p>Please navigate to this location using a web server.</p>
                                 <p>If you have Python 3 on your system you can just do:</p>
                             </div>
-                            <code>$ python3 -m http.server 6969</code>
+                            <code>$ python3 ./server.py 6969</code>
                         </div>
                         `;
                 });
