@@ -9,6 +9,11 @@ typedef struct {
 
 Example examples[] = {
     {
+        .src_path   = "./examples/audio_sound_loading.c",
+        .bin_path   = "./build/audio_sound_loading",
+        .wasm_path  = "./wasm/audio_sound_loading.wasm",
+    },
+    {
         .src_path   = "./examples/core_basic_window.c",
         .bin_path   = "./build/core_basic_window",
         .wasm_path  = "./wasm/core_basic_window.wasm",
