@@ -207,9 +207,23 @@ class RaylibJs {
     IsKeyPressed(key) {
         return !this.prevPressedKeyState.has(key) && this.currentPressedKeyState.has(key);
     }
+
+    IsKeyPressedRepeat(key) {
+        return false;
+    }
+
     IsKeyDown(key) {
         return this.currentPressedKeyState.has(key);
     }
+
+    IsKeyReleased(key) {
+        return this.prevPressedKeyState.has(key) && !this.currentPressedKeyState.has(key);
+    }
+
+    IsKeyUp(key) {
+        return !this.currentPressedKeyState.has(key);
+    }
+
     GetMouseWheelMove() {
       return this.currentMouseWheelMoveState;
     }
