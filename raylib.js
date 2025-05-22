@@ -128,6 +128,18 @@ class RaylibJs {
         return false;
     }
 
+    IsWindowFullscreen() {
+        return document.fullscreenElement && document.fullscreenElement === this.ctx.canvas;
+    }
+
+    ToggleFullscreen() {
+        if (this.IsWindowFullscreen()) {
+            document.exitFullscreen()
+        } else {
+            this.ctx.canvas.requestFullscreen();
+        }
+    }
+
     SetTargetFPS(fps) {
         console.log(`The game wants to run at ${fps} FPS, but in Web we gonna just ignore it.`);
         this.targetFPS = fps;
