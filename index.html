@@ -89,10 +89,12 @@
         const isHosted = protocol !== "file:";
         let raylibJs = undefined;
 
-        function startRaylib(selectedWasm){
-            var queryParams = new URLSearchParams(window.location.search);
-            queryParams.set("example", selectedWasm);
-            history.pushState(null, null, "?"+queryParams.toString());
+        function startRaylib(selectedWasm, save = true) {
+            if (save) {
+                const queryParams = new URLSearchParams(window.location.search);
+                queryParams.set("example", selectedWasm);
+                history.pushState(selectedWasm, null, "?"+queryParams.toString());
+            }
             raylibExampleSelect.value = selectedWasm;
 
             if (isHosted) {
@@ -125,6 +127,9 @@
 
         if (Object.values(wasmPaths).flat().includes(exampleParam)) startRaylib(exampleParam);
         else startRaylib(defaultWasm);
+        window.addEventListener("popstate", (ev) => {
+            startRaylib(ev.state, false); 
+        })
     </script>
 </body>
 </html>
