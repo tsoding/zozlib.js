@@ -44,6 +44,7 @@ class RaylibJs {
         this.currentMousePosition = {x: 0, y: 0};
         this.images = [];
         this.quit = false;
+        this.traceLogLevel = LOG_INFO;
     }
 
     constructor() {
@@ -223,6 +224,9 @@ class RaylibJs {
     }
 
     TraceLog(logLevel, text_ptr, ... args) {
+        if (logLevel < this.traceLogLevel) {
+            return;
+        }
         // TODO: Implement printf style formatting for TraceLog
         const buffer = this.exports.memory.buffer;
         const text = cstr_by_ptr(buffer, text_ptr);
@@ -234,8 +238,12 @@ class RaylibJs {
         case LOG_WARNING: console.log(`WARNING: ${text} ${args}`); break;
         case LOG_ERROR:   console.log(`ERROR: ${text} ${args}`);   break;
         case LOG_FATAL:   throw new Error(`FATAL: ${text}`);
-        case LOG_NONE:    console.log(`NONE: ${text} ${args}`);    break;
+        case LOG_NONE:    break;
         }
+    }
+
+    SetTraceLogLevel(logLevel) {
+        this.traceLogLevel = logLevel;
     }
 
     GetMousePosition(result_ptr) {
